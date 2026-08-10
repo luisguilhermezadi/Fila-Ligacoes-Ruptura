@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -11,6 +10,7 @@
 <meta name="description" content="Sua central inteligente de ligações.">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
+
 <title>CallUp Cons</title>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -155,20 +155,10 @@ h1{
   margin:7px 0 16px
 }
 
-/* =========================
-   OPERADORA
-========================= */
-
-.operator-area{
-  display:grid;
-  gap:10px;
-  margin-bottom:10px
-}
-
 .operator-select{
   width:100%;
   min-height:54px;
-  margin:0;
+  margin:0 0 10px;
   padding:0 15px;
   border:1px solid var(--line);
   border-radius:16px;
@@ -183,51 +173,27 @@ h1{
   border-color:#4be09a66
 }
 
-.operator-help{
-  color:var(--muted);
-  font-size:11px;
-  line-height:1.45;
-  margin:1px 2px 2px
-}
-
-.change-operator-btn{
+.operator-action{
   width:100%;
   min-height:52px;
+  margin:0 0 10px;
   border:1px solid #4be09a44;
   border-radius:16px;
   background:#173025;
   color:#8cf0bd;
   font-weight:850;
   cursor:pointer;
-  transition:.18s transform,.18s opacity,.18s background
+  transition:.18s transform,.18s opacity
 }
 
-.change-operator-btn:hover{
-  background:#1b392d
+.operator-action:hover{
+  background:#1c3b2e
 }
 
-.change-operator-btn:active{
+.operator-action:active{
   transform:scale(.98);
   opacity:.88
 }
-
-.change-operator-btn:disabled{
-  opacity:.35;
-  cursor:not-allowed;
-  transform:none
-}
-
-.operator-result{
-  min-height:17px;
-  color:var(--muted);
-  font-size:11px;
-  text-align:center;
-  margin:2px 0 4px
-}
-
-/* =========================
-   IMPORTAÇÃO
-========================= */
 
 .file-btn{
   display:flex;
@@ -253,10 +219,6 @@ h1{
 input[type=file]{
   display:none
 }
-
-/* =========================
-   ESTATÍSTICAS
-========================= */
 
 .stats{
   display:grid;
@@ -287,10 +249,6 @@ input[type=file]{
 .stat.accent .stat-value{
   color:var(--accent)
 }
-
-/* =========================
-   CONTATO ATUAL
-========================= */
 
 .current-head{
   display:flex;
@@ -343,6 +301,13 @@ input[type=file]{
   font-size:17px;
   color:#aeb6c4;
   margin-top:7px
+}
+
+.operator-info{
+  margin-top:8px;
+  color:#6ff0aa;
+  font-size:11px;
+  font-weight:800
 }
 
 .progress-row{
@@ -410,10 +375,6 @@ input[type=file]{
   cursor:not-allowed
 }
 
-/* =========================
-   STATUS
-========================= */
-
 .status-title{
   margin-bottom:10px
 }
@@ -441,10 +402,6 @@ input[type=file]{
   background:#173025;
   color:#8cf0bd
 }
-
-/* =========================
-   FILA
-========================= */
 
 .queue{
   padding:4px 3px 8px;
@@ -477,7 +434,8 @@ input[type=file]{
   background:#ffffff07;
   color:#8992a3;
   font-size:11px;
-  font-weight:800
+  font-weight:800;
+  flex-shrink:0
 }
 
 .qinfo{
@@ -490,17 +448,7 @@ input[type=file]{
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
-  color:#f7f8fa;
-  cursor:pointer;
-  text-decoration:none
-}
-
-.qname:hover{
-  text-decoration:underline
-}
-
-.qname:active{
-  opacity:.7
+  color:#f7f8fa
 }
 
 .qphone{
@@ -564,10 +512,6 @@ input[type=file]{
   padding:10px 2px
 }
 
-/* =========================
-   RODAPÉ / AÇÕES
-========================= */
-
 .actions{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -630,9 +574,26 @@ input[type=file]{
   display:none!important
 }
 
-/* =========================
-   LOGIN
-========================= */
+@media(min-width:620px){
+  .stats{
+    grid-template-columns:repeat(4,1fr)
+  }
+
+  .statuses{
+    grid-template-columns:repeat(4,1fr)
+  }
+
+  .wrap{
+    padding-top:32px
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  *{
+    scroll-behavior:auto!important;
+    transition:none!important
+  }
+}
 
 .auth-gate{
   min-height:100vh;
@@ -714,169 +675,106 @@ input[type=file]{
   gap:8px
 }
 
-.logout{
-  min-height:36px;
-  padding:0 11px;
-  font-size:11px
-}
-
-/* =========================
-   RESPONSIVO
-========================= */
-
-@media(min-width:620px){
-
-  .stats{
-    grid-template-columns:repeat(4,1fr)
-  }
-
-  .statuses{
-    grid-template-columns:repeat(4,1fr)
-  }
-
-  .wrap{
-    padding-top:32px
-  }
-
-}
-
 @media(max-width:500px){
-
   .user-actions .badge{
     display:none
   }
-
-  .change-operator-btn{
-    font-size:13px
-  }
-
-}
-
-@media(prefers-reduced-motion:reduce){
-
-  *{
-    scroll-behavior:auto!important;
-    transition:none!important
-  }
-
 }
 </style>
-
 </head>
 
 <body>
 
-<!-- =========================
-     LOGIN / CADASTRO
-========================= -->
-
 <div id="authGate" class="auth-gate">
-
   <div class="auth-card">
 
-```
-<div class="auth-logo">☎</div>
+    <div class="auth-logo">☎</div>
 
-<div class="eyebrow">CALLUP CONS</div>
+    <div class="eyebrow">CALLUP CONS</div>
 
-<h1>Entre para continuar</h1>
+    <h1>Entre para continuar</h1>
 
-<p id="authMessage">
-  Sua conta precisa estar aprovada para acessar a central.
-</p>
+    <p id="authMessage">
+      Sua conta precisa estar aprovada para acessar a central.
+    </p>
 
-<form id="loginForm">
+    <form id="loginForm">
+      <input
+        id="loginEmail"
+        type="email"
+        autocomplete="email"
+        placeholder="E-mail"
+        required
+      >
 
-  <input
-    id="loginEmail"
-    type="email"
-    autocomplete="email"
-    placeholder="E-mail"
-    required
-  >
+      <input
+        id="loginPassword"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Senha"
+        required
+      >
 
-  <input
-    id="loginPassword"
-    type="password"
-    autocomplete="current-password"
-    placeholder="Senha"
-    required
-  >
+      <button class="call" type="submit">
+        ENTRAR
+      </button>
+    </form>
 
-  <button class="call" type="submit">
-    ENTRAR
-  </button>
+    <button class="btn auth-secondary" id="showSignup" type="button">
+      CRIAR CONTA
+    </button>
 
-</form>
+    <button class="btn auth-secondary hidden" id="showLogin" type="button">
+      VOLTAR AO LOGIN
+    </button>
 
-<button
-  class="btn auth-secondary"
-  id="showSignup"
-  type="button"
->
-  CRIAR CONTA
-</button>
+    <form id="signupForm" class="hidden">
 
-<button
-  class="btn auth-secondary hidden"
-  id="showLogin"
-  type="button"
->
-  VOLTAR AO LOGIN
-</button>
+      <input
+        id="signupName"
+        type="text"
+        autocomplete="name"
+        placeholder="Nome completo"
+        required
+      >
 
-<form id="signupForm" class="hidden">
+      <input
+        id="signupEmail"
+        type="email"
+        autocomplete="email"
+        placeholder="E-mail"
+        required
+      >
 
-  <input
-    id="signupName"
-    type="text"
-    autocomplete="name"
-    placeholder="Nome completo"
-    required
-  >
+      <input
+        id="signupPassword"
+        type="password"
+        autocomplete="new-password"
+        minlength="8"
+        placeholder="Senha (mín. 8 caracteres)"
+        required
+      >
 
-  <input
-    id="signupEmail"
-    type="email"
-    autocomplete="email"
-    placeholder="E-mail"
-    required
-  >
+      <input
+        id="signupPassword2"
+        type="password"
+        autocomplete="new-password"
+        minlength="8"
+        placeholder="Confirmar senha"
+        required
+      >
 
-  <input
-    id="signupPassword"
-    type="password"
-    autocomplete="new-password"
-    minlength="8"
-    placeholder="Senha (mín. 8 caracteres)"
-    required
-  >
+      <button class="call" type="submit">
+        SOLICITAR ACESSO
+      </button>
 
-  <input
-    id="signupPassword2"
-    type="password"
-    autocomplete="new-password"
-    minlength="8"
-    placeholder="Confirmar senha"
-    required
-  >
+    </form>
 
-  <button class="call" type="submit">
-    SOLICITAR ACESSO
-  </button>
-
-</form>
-
-<div id="authToast" class="auth-toast"></div>
-```
+    <div id="authToast" class="auth-toast"></div>
 
   </div>
-
 </div>
 
-<!-- =========================
-     APLICAÇÃO
-========================= -->
 
 <div id="app" class="wrap hidden">
 
@@ -884,61 +782,51 @@ input[type=file]{
 
   <div class="brand">
 
-```
-<div class="brand-mark" aria-hidden="true">
+    <div class="brand-mark" aria-hidden="true">
 
-  <svg viewBox="0 0 24 24" fill="none">
+      <svg viewBox="0 0 24 24" fill="none">
 
-    <path
-      d="M6.8 4.7c.7-.7 1.8-.8 2.5-.2l2.1 1.7c.7.6.8 1.6.3 2.4l-1.2 1.7a12.8 12.8 0 0 0 5.2 5.2l1.7-1.2c.8-.5 1.8-.4 2.4.3l1.7 2.1c.6.7.5 1.8-.2 2.5l-1.2 1.2c-.9.9-2.2 1.3-3.4 1-3.4-.8-6.8-2.8-9.7-5.7s-4.9-6.3-5.7-9.7c-.3-1.2.1-2.5 1-3.4l1.2-1.2Z"
-      stroke="#6ff0aa"
-      stroke-width="1.6"
-    />
+        <path
+          d="M6.8 4.7c.7-.7 1.8-.8 2.5-.2l2.1 1.7c.7.6.8 1.6.3 2.4l-1.2 1.7a12.8 12.8 0 0 0 5.2 5.2l1.7-1.2c.8-.5 1.8-.4 2.4.3l1.7 2.1c.6.7.5 1.8-.2 2.5l-1.2 1.2c-.9.9-2.2 1.3-3.4 1-3.4-.8-6.8-2.8-9.7-5.7s-4.9-6.3-5.7-9.7c-.3-1.2.1-2.5 1-3.4l1.2-1.2Z"
+          stroke="#6ff0aa"
+          stroke-width="1.6"
+        />
 
-    <path
-      d="M14.8 4.2a6 6 0 0 1 5 5"
-      stroke="#6ff0aa"
-      stroke-width="1.6"
-      stroke-linecap="round"
-    />
+        <path
+          d="M14.8 4.2a6 6 0 0 1 5 5"
+          stroke="#6ff0aa"
+          stroke-width="1.6"
+          stroke-linecap="round"
+        />
 
-  </svg>
+      </svg>
 
-</div>
+    </div>
 
-<div>
-  <div class="brand-name">CALLUP CONS</div>
-  <div class="brand-sub">Central inteligente de ligações</div>
-</div>
-```
+    <div>
+      <div class="brand-name">CALLUP CONS</div>
+      <div class="brand-sub">Central inteligente de ligações</div>
+    </div>
 
   </div>
 
-  <div
-    class="user-actions"
-    style="display:flex;align-items:center;gap:8px"
-  >
+  <div class="user-actions">
 
-```
-<div class="badge" id="userBadge">—</div>
+    <div class="badge" id="userBadge">—</div>
 
-<button
-  class="btn"
-  id="logoutBtn"
-  type="button"
-  style="min-height:38px;padding:0 12px"
->
-  SAIR
-</button>
-```
+    <button
+      class="btn"
+      id="logoutBtn"
+      type="button"
+      style="min-height:38px;padding:0 12px"
+    >
+      SAIR
+    </button>
 
   </div>
 
 </header>
 
-<!-- =========================
-     HERO
-========================= -->
 
 <section class="hero">
 
@@ -952,15 +840,11 @@ input[type=file]{
   </h1>
 
   <p>
-    Importe sua lista, abra cada ligação pelo Telefone do iPhone
-    e avance pela fila sem digitar números.
+    Importe sua lista, abra cada ligação pelo Telefone do iPhone e avance pela fila sem digitar números.
   </p>
 
 </section>
 
-<!-- =========================
-     IMPORTAÇÃO
-========================= -->
 
 <section class="card import-card" id="importCard">
 
@@ -969,395 +853,263 @@ input[type=file]{
   </div>
 
   <div class="section-copy">
-    Carregue uma planilha e comece suas ligações em poucos segundos.
-    O nome e o número são identificados automaticamente.
+    Carregue uma planilha. A primeira coluna deve conter o nome e a segunda coluna deve conter o número.
   </div>
 
-  <!-- OPERADORA -->
+  <select
+    id="operator"
+    class="operator-select"
+    aria-label="Operadora"
+  >
+    <option value="021">CLARO — 021</option>
+    <option value="015">VIVO — 015</option>
+    <option value="041">TIM — 041</option>
+    <option value="031">OI — 031</option>
+    <option value="">SEM OPERADORA — manter número</option>
+  </select>
 
-  <div class="operator-area">
-
-```
-<select
-  id="operator"
-  class="operator-select"
-  aria-label="Operadora"
->
-
-  <option value="021">
-    CLARO — 021
-  </option>
-
-  <option value="015">
-    VIVO — 015
-  </option>
-
-  <option value="041">
-    TIM — 041
-  </option>
-
-  <option value="031">
-    OI — 031
-  </option>
-
-  <option value="">
-    SEM OPERADORA — manter número
-  </option>
-
-</select>
-
-
-<div class="operator-help">
-  Se você já importou uma lista, selecione a operadora desejada
-  e clique abaixo para substituir o código de operadora dos números.
-</div>
-
-
-<button
-  type="button"
-  class="change-operator-btn"
-  id="changeOperator"
->
-  🔄 &nbsp; ALTERAR NÚMEROS CONFORME OPERADORA
-</button>
-
-
-<div
-  id="operatorResult"
-  class="operator-result"
-  aria-live="polite"
-></div>
-```
-
-  </div>
-
-  <!-- IMPORTAR -->
+  <button
+    id="changeOperatorBtn"
+    class="operator-action"
+    type="button"
+  >
+    ALTERAR NÚMEROS CONFORME OPERADORA
+  </button>
 
   <label class="file-btn">
-
-```
-＋ &nbsp; IMPORTAR LISTA
-
-<input
-  id="file"
-  type="file"
-  accept=".xlsx,.xls,.csv"
->
-```
-
+    ＋ &nbsp; IMPORTAR LISTA
+    <input
+      id="file"
+      type="file"
+      accept=".xlsx,.xls,.csv"
+    >
   </label>
 
 </section>
 
-<!-- =========================
-     DASHBOARD
-========================= -->
 
 <section id="dashboard" class="hidden">
 
-  <!-- ESTATÍSTICAS -->
-
   <div class="stats card">
 
-```
-<div class="stat">
+    <div class="stat">
+      <div class="stat-label">CONTATOS</div>
+      <div class="stat-value" id="total">0</div>
+    </div>
 
-  <div class="stat-label">
-    CONTATOS
-  </div>
+    <div class="stat">
+      <div class="stat-label">REALIZADOS</div>
+      <div class="stat-value" id="done">0</div>
+    </div>
 
-  <div
-    class="stat-value"
-    id="total"
-  >
-    0
-  </div>
+    <div class="stat">
+      <div class="stat-label">PENDENTES</div>
+      <div class="stat-value" id="pending">0</div>
+    </div>
 
-</div>
-
-
-<div class="stat">
-
-  <div class="stat-label">
-    REALIZADOS
-  </div>
-
-  <div
-    class="stat-value"
-    id="done"
-  >
-    0
-  </div>
-
-</div>
-
-
-<div class="stat">
-
-  <div class="stat-label">
-    PENDENTES
-  </div>
-
-  <div
-    class="stat-value"
-    id="pending"
-  >
-    0
-  </div>
-
-</div>
-
-
-<div class="stat accent">
-
-  <div class="stat-label">
-    PROGRESSO
-  </div>
-
-  <div
-    class="stat-value"
-    id="percent"
-  >
-    0%
-  </div>
-
-</div>
-```
+    <div class="stat accent">
+      <div class="stat-label">PROGRESSO</div>
+      <div class="stat-value" id="percent">0%</div>
+    </div>
 
   </div>
 
-  <!-- PRÓXIMA LIGAÇÃO -->
 
   <section class="card">
 
-```
-<div class="current-head">
+    <div class="current-head">
 
-  <div class="section-title">
-    PRÓXIMA LIGAÇÃO
-  </div>
+      <div class="section-title">
+        PRÓXIMA LIGAÇÃO
+      </div>
 
-  <div
-    class="pill"
-    id="counter"
-  >
-    1 / 0
-  </div>
+      <div class="pill" id="counter">
+        1 / 0
+      </div>
 
-</div>
+    </div>
 
 
-<div class="contact">
+    <div class="contact">
 
-  <div
-    class="avatar"
-    id="avatar"
-  >
-    ?
-  </div>
+      <div class="avatar" id="avatar">
+        ?
+      </div>
 
-  <div id="name">
-    —
-  </div>
+      <div id="name">
+        —
+      </div>
 
-  <div id="phone">
-    —
-  </div>
+      <div id="phone">
+        —
+      </div>
 
-</div>
+      <div id="operatorInfo" class="operator-info">
+        Operadora não definida
+      </div>
 
-
-<div class="progress-row">
-
-  <span id="progressText">
-    0 / 0 contatos
-  </span>
-
-  <strong id="progressPct">
-    0% concluído
-  </strong>
-
-</div>
+    </div>
 
 
-<div class="progress">
+    <div class="progress-row">
 
-  <div
-    class="progress-fill"
-    id="progressFill"
-  ></div>
+      <span id="progressText">
+        0 / 0 contatos
+      </span>
 
-</div>
+      <strong id="progressPct">
+        0% concluído
+      </strong>
+
+    </div>
+
+    <div class="progress">
+      <div
+        class="progress-fill"
+        id="progressFill"
+      ></div>
+    </div>
 
 
-<button
-  class="call"
-  id="call"
-  type="button"
->
-  📞 &nbsp; LIGAR
-</button>
+    <button
+      class="call"
+      id="call"
+      type="button"
+    >
+      📞 &nbsp; LIGAR
+    </button>
 
 
-<div class="nav">
+    <div class="nav">
 
-  <button
-    class="btn"
-    id="prev"
-    type="button"
-  >
-    ← &nbsp; ANTERIOR
-  </button>
+      <button
+        class="btn"
+        id="prev"
+        type="button"
+      >
+        ← &nbsp; ANTERIOR
+      </button>
 
-  <button
-    class="btn"
-    id="next"
-    type="button"
-  >
-    PRÓXIMO &nbsp;→
-  </button>
+      <button
+        class="btn"
+        id="next"
+        type="button"
+      >
+        PRÓXIMO &nbsp;→
+      </button>
 
-</div>
-```
+    </div>
 
   </section>
 
-  <!-- STATUS -->
 
   <section class="card">
 
-```
-<div class="section-title status-title">
-  STATUS DA LIGAÇÃO
-</div>
+    <div class="section-title status-title">
+      STATUS DA LIGAÇÃO
+    </div>
 
-<div class="statuses">
+    <div class="statuses">
 
-  <button
-    class="status-btn"
-    data-status="atendeu"
-    type="button"
-  >
-    ✓ &nbsp; ATENDEU
-  </button>
+      <button
+        class="status-btn"
+        data-status="atendeu"
+        type="button"
+      >
+        ✓ &nbsp; ATENDEU
+      </button>
 
-  <button
-    class="status-btn"
-    data-status="nao_atendeu"
-    type="button"
-  >
-    ✕ &nbsp; NÃO ATENDEU
-  </button>
+      <button
+        class="status-btn"
+        data-status="nao_atendeu"
+        type="button"
+      >
+        ✕ &nbsp; NÃO ATENDEU
+      </button>
 
-  <button
-    class="status-btn"
-    data-status="retornar"
-    type="button"
-  >
-    ↩ &nbsp; RETORNAR
-  </button>
+      <button
+        class="status-btn"
+        data-status="retornar"
+        type="button"
+      >
+        ↩ &nbsp; RETORNAR
+      </button>
 
-  <button
-    class="status-btn"
-    data-status="sem_interesse"
-    type="button"
-  >
-    🚫 &nbsp; SEM INTERESSE
-  </button>
+      <button
+        class="status-btn"
+        data-status="sem_interesse"
+        type="button"
+      >
+        🚫 &nbsp; SEM INTERESSE
+      </button>
 
-</div>
-```
+    </div>
 
   </section>
 
-  <!-- FILA -->
 
   <section class="card">
 
-```
-<div class="current-head">
+    <div class="current-head">
 
-  <div class="section-title">
-    FILA DE LIGAÇÕES
-  </div>
+      <div class="section-title">
+        FILA DE LIGAÇÕES
+      </div>
 
-  <div
-    class="pill"
-    id="queueCount"
-  >
-    0 contatos
-  </div>
+      <div class="pill" id="queueCount">
+        0 contatos
+      </div>
 
-</div>
+    </div>
 
-<div
-  id="queue"
-  class="queue"
-></div>
-```
+    <div id="queue" class="queue"></div>
 
   </section>
 
-  <!-- AÇÕES -->
 
   <div class="actions">
 
-```
-<button
-  class="btn reset"
-  id="newList"
-  type="button"
->
-  ＋ &nbsp; NOVA LISTA
-</button>
+    <button
+      class="btn reset"
+      id="newList"
+      type="button"
+    >
+      ＋ &nbsp; NOVA LISTA
+    </button>
 
-<button
-  class="btn reset"
-  id="reset"
-  type="button"
->
-  ↺ &nbsp; RECOMEÇAR
-</button>
-```
+    <button
+      class="btn reset"
+      id="reset"
+      type="button"
+    >
+      ↺ &nbsp; RECOMEÇAR
+    </button>
 
   </div>
 
 </section>
 
-<!-- =========================
-     PRIVACIDADE / RODAPÉ
-========================= -->
 
 <div class="privacy">
-
-🔒
-
-  <strong>
-    Seus contatos permanecem neste dispositivo.
-  </strong>
-
+  🔒 <strong>Seus contatos permanecem neste dispositivo.</strong>
   <br>
-
-Nenhum contato é enviado para servidor.
-
+  Nenhum contato é enviado para servidor.
 </div>
 
 <footer class="footer">
-
-<b>CallUp Cons</b>
-
+  <b>CallUp Cons</b>
   <br>
-
-Criado por Luis Zadi
-
+  Criado por Luis Zadi
 </footer>
 
 </div>
+
 
 <div
   class="toast"
   id="toast"
 ></div>
+
 
 <script
   type="module"
