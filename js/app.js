@@ -3,230 +3,215 @@ import { bindAuthUI, requireApprovedUser } from "./auth.js";
 
 let currentUser = null;
 
-const STORAGE_PREFIX = "callup_cons_v3_";
+const STORAGE_PREFIX = "callup_cons_v4_";
 
 let contacts = [];
 let idx = 0;
 
-const $ = id => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
+
 
 /* =========================================================
    UTILITÁRIOS
 ========================================================= */
 
-const normalize = s =>
-  String(s ?? "")
+const normalize = (value) =>
+  String(value ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
+
 function findCol(headers, words) {
-  return headers.findIndex(h =>
-    words.some(w => normalize(h).includes(w))
+  return headers.findIndex((header) =>
+    words.some((word) =>
+      normalize(header).includes(word)
+    )
   );
 }
 
+
 /* =========================================================
-   LIMPEZA DE TELEFONE
+   LIMPEZA DO TELEFONE
 ========================================================= */
 
 function cleanPhone(value) {
 
-  let s = String(value ?? "").trim();
+  let phone = String(value ?? "").trim();
 
-  if (!s) return "";
-
-  /*
-   * Remove casas decimais que podem aparecer
-   * quando o Excel interpreta o telefone como número.
-   *
-   * Exemplo:
-   * 11987654321.0
-   * vira:
-   * 11987654321
-   */
-
-  if (/^\d+([.,]\d+)?$/.test(s)) {
-    s = s.replace(/[.,]\d+$/, "");
+  if (!phone) {
+    return "";
   }
 
-  return s.replace(/\D/g, "");
+  if (/^\d+([.,]\d+)?$/.test(phone)) {
+    phone = phone.replace(/[.,]\d+$/, "");
+  }
+
+  return phone.replace(/\D/g, "");
 }
 
+
 /* =========================================================
-   NORMALIZAÇÃO PARA TELEFONE BRASILEIRO
+   CONVERSÃO PARA BASE BRASILEIRA
+=========================================================
+
+   O objetivo desta função é retirar:
+
+   +55
+   55
+   021
+   015
+   041
+   031
+   0 inicial
+
+   deixando apenas:
+
+   DDD + número
+
+   Exemplo:
+
+   02111999999999
+   -> 11999999999
+
+   01511999999999
+   -> 11999999999
+
+   5511999999999
+   -> 11999999999
+
 ========================================================= */
 
-function normalizeBrazilPhone(raw) {
+function baseBrazilianNumber(raw) {
 
-  let n = cleanPhone(raw);
+  let number = cleanPhone(raw);
 
-  if (!n) return "";
-
-  /*
-   * Remove o código internacional 55 temporariamente.
-   */
-
-  if (n.startsWith("55")) {
-    n = n.slice(2);
+  if (!number) {
+    return "";
   }
 
-  /*
-   * Remove zeros/códigos de operadora antigos.
-   *
-   * Exemplos:
-   *
-   * 02111987654321
-   * 01511987654321
-   * 04111987654321
-   * 03111987654321
-   *
-   * tornam-se:
-   *
-   * 11987654321
-   */
 
-  if (n.length === 13 && n.startsWith("0")) {
-    n = n.slice(3);
+  /* Remove código do país */
+
+  if (number.startsWith("55")) {
+    number = number.slice(2);
   }
 
+
   /*
-   * Caso venha com 12 dígitos:
+   * Remove código de operadora existente.
    *
-   * 0211198765432
-   *
-   * também tenta remover o código.
+   * 021 + DDD + número
+   * 015 + DDD + número
+   * 041 + DDD + número
+   * 031 + DDD + número
    */
 
-  if (n.length === 12 && n.startsWith("0")) {
-    n = n.slice(3);
+  if (
+    number.startsWith("021") ||
+    number.startsWith("015") ||
+    number.startsWith("041") ||
+    number.startsWith("031")
+  ) {
+    number = number.slice(3);
   }
+
 
   /*
    * Se ainda houver um zero inicial,
-   * remove para deixar somente DDD + número.
+   * remove esse zero.
    */
 
-  if (n.startsWith("0")) {
-    n = n.slice(1);
+  if (number.startsWith("0")) {
+    number = number.slice(1);
   }
 
-  return n;
+
+  return number;
 }
 
+
 /* =========================================================
-   APLICA OPERADORA
+   APLICAÇÃO DA OPERADORA
 ========================================================= */
 
 function applyOperator(raw, operator) {
 
-  let n = cleanPhone(raw);
+  const base = baseBrazilianNumber(raw);
 
-  if (!n) return "";
+  if (!base) {
+    return "";
+  }
 
   /*
-   * Se não houver operadora selecionada,
-   * retorna somente o número limpo.
+   * Sem operadora:
+   * mantém DDD + número.
    */
 
   if (!operator) {
-    return n;
+    return base;
   }
 
   /*
-   * Remove 55.
+   * Operadora:
+   *
+   * 021 + DDD + número
+   * 015 + DDD + número
+   * 041 + DDD + número
+   * 031 + DDD + número
    */
 
-  if (n.startsWith("55")) {
-    n = n.slice(2);
-  }
-
-  /*
-   * Remove qualquer código de operadora
-   * que já esteja presente.
-   *
-   * Isso é o ponto importante:
-   *
-   * 02111987654321
-   * vira
-   * 11987654321
-   *
-   * 01511987654321
-   * vira
-   * 11987654321
-   *
-   * 04111987654321
-   * vira
-   * 11987654321
-   */
-
-  if (
-    n.length >= 13 &&
-    n.startsWith("0") &&
-    ["021", "015", "041", "031"].includes(n.slice(0, 3))
-  ) {
-    n = n.slice(3);
-  }
-
-  /*
-   * Caso tenha apenas 0 + código:
-   */
-
-  if (
-    n.length >= 12 &&
-    n.startsWith("0") &&
-    ["021", "015", "041", "031"].includes(n.slice(0, 3))
-  ) {
-    n = n.slice(3);
-  }
-
-  /*
-   * Remove zero adicional antes do DDD.
-   */
-
-  if (n.startsWith("0")) {
-    n = n.slice(1);
-  }
-
-  /*
-   * Agora n deve estar no formato:
-   *
-   * DDD + número
-   *
-   * Exemplo:
-   * 11987654321
-   *
-   * Aplicamos a operadora:
-   *
-   * 015 + 11987654321
-   *
-   * = 01511987654321
-   */
-
-  return operator + n;
+  return operator + base;
 }
 
+
 /* =========================================================
-   NÚMERO PARA TEL:
-   
-   O formato utilizado pelo link tel:
-   
-   +55 + código operadora + DDD + número
+   NÚMERO PARA LIGAÇÃO
 ========================================================= */
 
 function telNumber(raw) {
 
-  const n = cleanPhone(raw);
+  const number = cleanPhone(raw);
 
-  if (!n) return "";
-
-  if (n.startsWith("55")) {
-    return "+" + n;
+  if (!number) {
+    return "";
   }
 
-  return "+55" + n;
+  /*
+   * Se já estiver em formato:
+   *
+   * 0XX + DDD + número
+   *
+   * mantém exatamente assim.
+   */
+
+  if (
+    number.startsWith("021") ||
+    number.startsWith("015") ||
+    number.startsWith("041") ||
+    number.startsWith("031")
+  ) {
+    return number;
+  }
+
+  /*
+   * Se estiver com 55:
+   * transforma para +55...
+   */
+
+  if (number.startsWith("55")) {
+    return "+" + number;
+  }
+
+  /*
+   * Caso seja DDD + número sem operadora,
+   * liga diretamente.
+   */
+
+  return number;
 }
+
 
 /* =========================================================
    FORMATAÇÃO VISUAL
@@ -234,70 +219,101 @@ function telNumber(raw) {
 
 function formatPhone(raw) {
 
-  let n = cleanPhone(raw);
+  let number = cleanPhone(raw);
 
-  if (n.startsWith("55")) {
-    n = n.slice(2);
+  if (!number) {
+    return "—";
   }
+
 
   /*
-   * Remove código de operadora para exibição
-   * quando houver.
+   * Número com código de operadora:
+   *
+   * 021 + 11 + 999999999
    */
 
-  if (
-    n.length === 14 &&
-    n.startsWith("0") &&
-    ["021", "015", "041", "031"].includes(n.slice(0, 3))
-  ) {
-    n = n.slice(3);
-  }
+  let operator = "";
 
   if (
-    n.length === 13 &&
-    n.startsWith("0") &&
-    ["021", "015", "041", "031"].includes(n.slice(0, 3))
+    number.startsWith("021") ||
+    number.startsWith("015") ||
+    number.startsWith("041") ||
+    number.startsWith("031")
   ) {
-    n = n.slice(3);
+    operator = number.slice(0, 3);
+    number = number.slice(3);
   }
 
-  if (n.length === 11) {
-    return (
+
+  /*
+   * Remove 55 para exibição.
+   */
+
+  if (number.startsWith("55")) {
+    number = number.slice(2);
+  }
+
+
+  let formatted = number;
+
+  if (number.length === 11) {
+    formatted =
       "(" +
-      n.slice(0, 2) +
+      number.slice(0, 2) +
       ") " +
-      n.slice(2, 7) +
+      number.slice(2, 7) +
       "-" +
-      n.slice(7)
-    );
+      number.slice(7);
   }
 
-  if (n.length === 10) {
-    return (
+  else if (number.length === 10) {
+    formatted =
       "(" +
-      n.slice(0, 2) +
+      number.slice(0, 2) +
       ") " +
-      n.slice(2, 6) +
+      number.slice(2, 6) +
       "-" +
-      n.slice(6)
-    );
+      number.slice(6);
   }
 
-  return n;
+
+  if (operator) {
+    return operator + " " + formatted;
+  }
+
+  return formatted;
 }
+
+
+/* =========================================================
+   NOME / INICIAIS
+========================================================= */
+
+function initials(name) {
+
+  const parts =
+    String(name || "?")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+  return (
+    (parts[0]?.[0] || "?") +
+    (parts.length > 1
+      ? parts[parts.length - 1][0]
+      : "")
+  );
+}
+
 
 /* =========================================================
    STORAGE
 ========================================================= */
 
 function storageKey() {
-
-  return (
-    STORAGE_PREFIX +
-    (currentUser?.id || "anonymous")
-  );
-
+  return STORAGE_PREFIX + (currentUser?.id || "anonymous");
 }
+
 
 function saveLocal() {
 
@@ -312,9 +328,16 @@ function saveLocal() {
       })
     );
 
-  } catch {}
+  } catch (error) {
 
+    console.error(
+      "Erro ao salvar lista:",
+      error
+    );
+
+  }
 }
+
 
 function loadLocal() {
 
@@ -323,36 +346,43 @@ function loadLocal() {
     const raw =
       localStorage.getItem(storageKey());
 
-    if (!raw) return false;
+    if (!raw) {
+      return false;
+    }
 
-    const d = JSON.parse(raw);
+    const data =
+      JSON.parse(raw);
 
     if (
-      !Array.isArray(d.contacts) ||
-      !d.contacts.length
+      !Array.isArray(data.contacts) ||
+      !data.contacts.length
     ) {
       return false;
     }
 
-    contacts = d.contacts;
+    contacts = data.contacts;
 
     idx = Math.max(
       0,
       Math.min(
-        Number(d.idx) || 0,
+        Number(data.idx) || 0,
         contacts.length - 1
       )
     );
 
     return true;
 
-  } catch {
+  } catch (error) {
+
+    console.error(
+      "Erro ao carregar lista:",
+      error
+    );
 
     return false;
-
   }
-
 }
+
 
 /* =========================================================
    TOAST
@@ -360,24 +390,24 @@ function loadLocal() {
 
 function toast(message) {
 
-  const el = $("toast");
+  const element = $("toast");
 
-  if (!el) return;
+  element.textContent = message;
 
-  el.textContent = message;
+  element.classList.add("show");
 
-  el.classList.add("show");
-
-  clearTimeout(window.__toast);
+  clearTimeout(
+    window.__toast
+  );
 
   window.__toast =
-    setTimeout(
-      () =>
-        el.classList.remove("show"),
-      2300
-    );
+    setTimeout(() => {
 
+      element.classList.remove("show");
+
+    }, 2500);
 }
+
 
 /* =========================================================
    PROGRESSO
@@ -385,70 +415,155 @@ function toast(message) {
 
 function pct() {
 
-  if (!contacts.length) return 0;
+  if (!contacts.length) {
+    return 0;
+  }
 
   return (
     contacts.filter(
-      c => c.status
+      (contact) => contact.status
     ).length /
     contacts.length
   ) * 100;
-
 }
 
-function initials(name) {
-
-  const parts =
-    String(name || "?")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-
-  return (
-    (parts[0]?.[0] || "?") +
-    (
-      parts.length > 1
-        ? parts[parts.length - 1][0]
-        : ""
-    )
-  );
-
-}
 
 /* =========================================================
-   RENDER
+   OPERADORA ATUAL
+========================================================= */
+
+function currentOperator() {
+
+  const select = $("operator");
+
+  if (!select) {
+    return "";
+  }
+
+  return select.value;
+}
+
+
+function operatorName(code) {
+
+  const names = {
+    "021": "CLARO",
+    "015": "VIVO",
+    "041": "TIM",
+    "031": "OI"
+  };
+
+  return names[code] || "SEM OPERADORA";
+}
+
+
+/* =========================================================
+   ALTERAR NÚMEROS DA LISTA
+========================================================= */
+
+function updateNumbersForOperator() {
+
+  if (!contacts.length) {
+
+    toast(
+      "Importe uma lista antes de alterar os números."
+    );
+
+    return;
+  }
+
+
+  const operator =
+    currentOperator();
+
+
+  /*
+   * Cria uma nova lista de contatos
+   * aplicando a operadora escolhida.
+   */
+
+  contacts = contacts.map((contact) => {
+
+    return {
+      ...contact,
+      phone: applyOperator(
+        contact.phone,
+        operator
+      )
+    };
+
+  });
+
+
+  saveLocal();
+
+  render();
+
+
+  if (operator) {
+
+    toast(
+      `Números atualizados para ${operatorName(operator)} — ${operator}`
+    );
+
+  } else {
+
+    toast(
+      "Operadora removida dos números."
+    );
+
+  }
+}
+
+
+/* =========================================================
+   RENDERIZAÇÃO
 ========================================================= */
 
 function render() {
 
-  const has =
+  const hasContacts =
     contacts.length > 0;
 
   $("dashboard")
     .classList
-    .toggle("hidden", !has);
+    .toggle(
+      "hidden",
+      !hasContacts
+    );
 
-  if (!has) return;
+  if (!hasContacts) {
+    return;
+  }
 
-  idx = Math.max(
-    0,
-    Math.min(
-      idx,
-      contacts.length - 1
-    )
-  );
 
-  const c = contacts[idx];
+  idx =
+    Math.max(
+      0,
+      Math.min(
+        idx,
+        contacts.length - 1
+      )
+    );
+
+
+  const contact =
+    contacts[idx];
+
 
   const done =
     contacts.filter(
-      x => x.status
+      (item) => item.status
     ).length;
+
 
   const pending =
     contacts.length - done;
 
-  const p = pct();
+
+  const progress =
+    pct();
+
 
   $("total").textContent =
     contacts.length.toLocaleString("pt-BR");
@@ -459,56 +574,85 @@ function render() {
   $("pending").textContent =
     pending.toLocaleString("pt-BR");
 
+
   $("percent").textContent =
-    (p < 10
-      ? p.toFixed(2)
-      : p.toFixed(0)
+    (
+      progress < 10
+        ? progress.toFixed(2)
+        : progress.toFixed(0)
     ) + "%";
+
 
   $("counter").textContent =
     `${idx + 1} / ${contacts.length.toLocaleString("pt-BR")}`;
 
+
   $("name").textContent =
-    c.name || "Sem nome";
+    contact.name || "Sem nome";
+
 
   $("phone").textContent =
-    formatPhone(c.phone);
+    formatPhone(contact.phone);
+
 
   $("avatar").textContent =
-    initials(c.name)
+    initials(contact.name)
       .slice(0, 2)
       .toUpperCase();
+
+
+  const selectedOperator =
+    currentOperator();
+
+
+  if (selectedOperator) {
+
+    $("operatorInfo").textContent =
+      `${operatorName(selectedOperator)} — ${selectedOperator}`;
+
+  } else {
+
+    $("operatorInfo").textContent =
+      "Sem código de operadora";
+
+  }
+
 
   $("progressText").textContent =
     `${done.toLocaleString("pt-BR")} / ${contacts.length.toLocaleString("pt-BR")} contatos`;
 
+
   $("progressPct").textContent =
-    `${p.toFixed(2)}% concluído`;
+    `${progress.toFixed(2)}% concluído`;
+
 
   $("progressFill").style.width =
-    Math.min(100, p) + "%";
+    Math.min(100, progress) + "%";
+
 
   $("prev").disabled =
     idx === 0;
 
+
   $("next").disabled =
     idx === contacts.length - 1;
 
+
   document
     .querySelectorAll(".status-btn")
-    .forEach(button => {
+    .forEach((button) => {
 
       button.classList.toggle(
         "active",
-        button.dataset.status ===
-          c.status
+        button.dataset.status === contact.status
       );
 
     });
 
-  renderQueue();
 
+  renderQueue();
 }
+
 
 /* =========================================================
    STATUS
@@ -531,8 +675,8 @@ function statusLabel(status) {
       "🚫 SEM INTERESSE"
 
   }[status] || "PENDENTE";
-
 }
+
 
 /* =========================================================
    FILA
@@ -540,51 +684,45 @@ function statusLabel(status) {
 
 function renderQueue() {
 
-  const out =
+  const output =
     $("queue");
 
-  out.innerHTML = "";
+  output.innerHTML = "";
 
-  const list =
-    contacts.map(
-      (c, pos) => ({
-        c,
-        pos
-      })
-    );
 
   $("queueCount").textContent =
     contacts.length.toLocaleString("pt-BR") +
     " contatos";
 
-  if (!list.length) {
 
-    out.innerHTML =
-      "Fila concluída.";
+  if (!contacts.length) {
+
+    output.innerHTML =
+      '<div class="empty">Nenhum contato na fila.</div>';
 
     return;
-
   }
 
-  list.forEach(
-    ({ c, pos }) => {
 
-      const el =
-        document.createElement(
-          "div"
-        );
+  contacts.forEach(
+    (contact, position) => {
 
-      el.className =
+      const element =
+        document.createElement("div");
+
+
+      element.className =
         "queue-item" +
         (
-          pos === idx
+          position === idx
             ? " current"
             : ""
         );
 
-      el.innerHTML = `
+
+      element.innerHTML = `
         <div class="qnum">
-          ${pos + 1}
+          ${position + 1}
         </div>
 
         <div class="qinfo">
@@ -598,88 +736,120 @@ function renderQueue() {
         </div>
       `;
 
-      el.querySelector(
-        ".qname"
-      ).textContent =
-        c.name ||
-        "Sem nome";
 
-      el.querySelector(
-        ".qphone"
-      ).textContent =
-        formatPhone(c.phone);
+      element
+        .querySelector(".qname")
+        .textContent =
+          contact.name || "Sem nome";
 
-      const s =
-        el.querySelector(
-          ".qstatus"
-        );
 
-      s.textContent =
-        statusLabel(c.status);
+      element
+        .querySelector(".qphone")
+        .textContent =
+          formatPhone(contact.phone);
 
-      s.classList.add(
-        c.status || "pending"
+
+      const statusElement =
+        element.querySelector(".qstatus");
+
+
+      statusElement.textContent =
+        statusLabel(contact.status);
+
+
+      statusElement.classList.add(
+        contact.status || "pending"
       );
 
-      out.appendChild(el);
+
+      /*
+       * Permite clicar em qualquer contato
+       * da fila para torná-lo atual.
+       */
+
+      element.addEventListener(
+        "click",
+        () => {
+
+          idx = position;
+
+          saveLocal();
+
+          render();
+
+        }
+      );
+
+
+      output.appendChild(element);
 
     }
   );
 
-  const cur =
-    out.querySelector(
+
+  const current =
+    output.querySelector(
       ".queue-item.current"
     );
 
-  if (cur) {
 
-    cur.scrollIntoView({
+  if (current) {
+
+    current.scrollIntoView({
       block: "nearest",
       behavior: "smooth"
     });
 
   }
-
 }
 
+
 /* =========================================================
-   LIGAR CONTATO ATUAL
+   ABRIR LIGAÇÃO
 ========================================================= */
 
 function openCurrent() {
 
-  const c =
+  const contact =
     contacts[idx];
 
-  if (!c) return;
 
-  c.called = true;
+  if (!contact) {
+    return;
+  }
+
+
+  const number =
+    telNumber(contact.phone);
+
+
+  if (!number) {
+
+    toast(
+      "Este contato não possui um número válido."
+    );
+
+    return;
+  }
+
+
+  contact.called = true;
 
   saveLocal();
 
   render();
 
-  const number =
-    telNumber(c.phone);
-
-  if (!number) {
-
-    toast(
-      "Número de telefone inválido."
-    );
-
-    return;
-
-  }
 
   /*
-   * Abre o discador do aparelho.
+   * IMPORTANTE:
+   * aqui é usado o número que já foi
+   * atualizado pela operadora.
    */
 
   window.location.href =
     "tel:" + number;
-
 }
+
 
 /* =========================================================
    SALVAR STATUS NO SUPABASE
@@ -696,353 +866,310 @@ async function saveStatusToServer(status) {
       }
     );
 
-  } catch {}
+  } catch (error) {
 
-}
-
-/* =========================================================
-   ALTERAR OPERADORA DE TODA A LISTA
-========================================================= */
-
-function changeOperatorForAll() {
-
-  if (!contacts.length) {
-
-    toast(
-      "Importe uma lista primeiro."
+    console.error(
+      "Erro ao registrar status:",
+      error
     );
 
-    return;
-
   }
-
-  const operator =
-    $("operator")?.value || "";
-
-  if (!operator) {
-
-    const confirmed =
-      confirm(
-        "A opção 'SEM OPERADORA' foi selecionada.\n\n" +
-        "Isso removerá o código de operadora dos números.\n\n" +
-        "Deseja continuar?"
-      );
-
-    if (!confirmed) return;
-
-  }
-
-  const names = {
-
-    "021":
-      "CLARO — 021",
-
-    "015":
-      "VIVO — 015",
-
-    "041":
-      "TIM — 041",
-
-    "031":
-      "OI — 031",
-
-    "":
-      "SEM OPERADORA"
-
-  };
-
-  const operatorName =
-    names[operator] ||
-    operator;
-
-  const confirmed =
-    confirm(
-      `Alterar a operadora de TODOS os ${contacts.length} contatos para:\n\n` +
-      `${operatorName}\n\n` +
-      `Os números existentes serão atualizados.\n\n` +
-      `Deseja continuar?`
-    );
-
-  if (!confirmed) return;
-
-  let changed = 0;
-
-  contacts =
-    contacts.map(contact => {
-
-      const oldPhone =
-        contact.phone;
-
-      const newPhone =
-        applyOperator(
-          oldPhone,
-          operator
-        );
-
-      if (
-        newPhone &&
-        newPhone !== oldPhone
-      ) {
-
-        changed++;
-
-      }
-
-      return {
-        ...contact,
-        phone: newPhone
-      };
-
-    });
-
-  saveLocal();
-
-  render();
-
-  const info =
-    $("operatorInfo");
-
-  if (info) {
-
-    info.textContent =
-      `${changed} número(s) atualizado(s) para ${operatorName}.`;
-
-  }
-
-  toast(
-    `${changed} número(s) atualizado(s)`
-  );
-
 }
+
 
 /* =========================================================
    IMPORTAÇÃO DA PLANILHA
 ========================================================= */
 
-$("file")
-  .addEventListener(
-    "change",
-    async e => {
+$("file").addEventListener(
+  "change",
+  async (event) => {
 
-      const file =
-        e.target.files[0];
+    const file =
+      event.target.files[0];
 
-      if (!file) return;
 
-      try {
+    if (!file) {
+      return;
+    }
 
-        const data =
-          await file.arrayBuffer();
 
-        const wb =
-          XLSX.read(
-            data,
-            {
-              type: "array"
-            }
-          );
+    try {
 
-        const ws =
-          wb.Sheets[
-            wb.SheetNames[0]
-          ];
+      const data =
+        await file.arrayBuffer();
 
-        const rows =
-          XLSX.utils.sheet_to_json(
-            ws,
-            {
-              header: 1,
-              defval: ""
-            }
-          );
 
-        if (!rows.length) {
-
-          throw new Error(
-            "Planilha vazia."
-          );
-
-        }
-
-        const headers =
-          rows[0];
-
-        /*
-         * Coluna 1 = nome
-         * Coluna 2 = número
-         */
-
-        let ni =
-          findCol(
-            headers,
-            [
-              "nome",
-              "name",
-              "cliente",
-              "contato"
-            ]
-          );
-
-        let pi =
-          findCol(
-            headers,
-            [
-              "numero",
-              "telefone",
-              "celular",
-              "phone",
-              "fone",
-              "whatsapp"
-            ]
-          );
-
-        if (ni < 0) ni = 0;
-
-        if (pi < 0) {
-
-          pi =
-            headers.length > 1
-              ? 1
-              : 0;
-
-        }
-
-        const parsed =
-          rows
-            .slice(1)
-            .map(row => ({
-
-              name:
-                String(
-                  row[ni] ?? ""
-                ).trim(),
-
-              phone:
-                cleanPhone(
-                  row[pi]
-                ),
-
-              status: "",
-
-              called: false
-
-            }))
-            .filter(
-              x =>
-                x.phone.length >= 10
-            );
-
-        if (!parsed.length) {
-
-          throw new Error(
-            "Nenhum telefone válido encontrado."
-          );
-
-        }
-
-        contacts =
-          parsed;
-
-        idx = 0;
-
-        saveLocal();
-
-        render();
-
-        toast(
-          `${contacts.length.toLocaleString("pt-BR")} contatos importados`
+      const workbook =
+        XLSX.read(
+          data,
+          { type: "array" }
         );
 
-        setTimeout(
-          () =>
-            $("dashboard")
-              .scrollIntoView({
-                behavior: "smooth",
-                block: "start"
-              }),
-          80
+
+      const worksheet =
+        workbook.Sheets[
+          workbook.SheetNames[0]
+        ];
+
+
+      const rows =
+        XLSX.utils.sheet_to_json(
+          worksheet,
+          {
+            header: 1,
+            defval: ""
+          }
         );
 
-      } catch (err) {
 
-        console.error(
-          "Erro ao importar:",
-          err
-        );
+      if (!rows.length) {
 
-        alert(
-          "Não consegui ler a planilha.\n\n" +
-          "Verifique se:\n" +
-          "• a coluna 1 contém o nome;\n" +
-          "• a coluna 2 contém o número."
+        throw new Error(
+          "Planilha vazia."
         );
 
       }
 
-      e.target.value = "";
+
+      const headers =
+        rows[0];
+
+
+      /*
+       * Coluna 1 = nome
+       * Coluna 2 = número
+       *
+       * Também mantém detecção
+       * automática como compatibilidade.
+       */
+
+      let nameIndex =
+        findCol(
+          headers,
+          [
+            "nome",
+            "name",
+            "cliente",
+            "contato"
+          ]
+        );
+
+
+      let phoneIndex =
+        findCol(
+          headers,
+          [
+            "numero",
+            "telefone",
+            "celular",
+            "phone",
+            "fone",
+            "whatsapp"
+          ]
+        );
+
+
+      if (nameIndex < 0) {
+        nameIndex = 0;
+      }
+
+
+      if (phoneIndex < 0) {
+
+        phoneIndex =
+          headers.length > 1
+            ? 1
+            : 0;
+
+      }
+
+
+      const selectedOperator =
+        currentOperator();
+
+
+      const parsed =
+        rows
+          .slice(1)
+          .map((row) => {
+
+            const originalPhone =
+              cleanPhone(
+                row[phoneIndex]
+              );
+
+
+            /*
+             * Assim que importa,
+             * já aplica a operadora selecionada.
+             */
+
+            const finalPhone =
+              applyOperator(
+                originalPhone,
+                selectedOperator
+              );
+
+
+            return {
+
+              name:
+                String(
+                  row[nameIndex] ?? ""
+                ).trim(),
+
+              phone:
+                finalPhone,
+
+              status:
+                "",
+
+              called:
+                false
+
+            };
+
+          })
+          .filter(
+            (contact) =>
+              baseBrazilianNumber(
+                contact.phone
+              ).length >= 10
+          );
+
+
+      if (!parsed.length) {
+
+        throw new Error(
+          "Nenhum telefone válido encontrado."
+        );
+
+      }
+
+
+      contacts =
+        parsed;
+
+
+      idx = 0;
+
+
+      saveLocal();
+
+      render();
+
+
+      toast(
+        `${contacts.length.toLocaleString("pt-BR")} contatos importados`
+      );
+
+
+      setTimeout(
+        () => {
+
+          $("dashboard")
+            .scrollIntoView({
+              behavior: "smooth",
+              block: "start"
+            });
+
+        },
+        80
+      );
+
+
+    } catch (error) {
+
+      console.error(
+        "Erro ao importar planilha:",
+        error
+      );
+
+
+      alert(
+        "Não consegui ler a planilha. Verifique se a coluna 1 contém o nome e a coluna 2 contém o número."
+      );
 
     }
-  );
+
+
+    event.target.value = "";
+
+  }
+);
+
 
 /* =========================================================
    BOTÃO ALTERAR OPERADORA
 ========================================================= */
 
-const changeOperatorButton =
-  $("changeOperator");
+$("changeOperatorBtn").addEventListener(
+  "click",
+  () => {
 
-if (changeOperatorButton) {
+    updateNumbersForOperator();
 
-  changeOperatorButton.onclick =
-    changeOperatorForAll;
+  }
+);
 
-}
 
 /* =========================================================
-   BOTÃO LIGAR
+   LIGAR
 ========================================================= */
 
-$("call").onclick =
-  openCurrent;
+$("call").addEventListener(
+  "click",
+  openCurrent
+);
+
 
 /* =========================================================
    PRÓXIMO
 ========================================================= */
 
-$("next").onclick = () => {
+$("next").addEventListener(
+  "click",
+  () => {
 
-  if (
-    idx <
-    contacts.length - 1
-  ) {
+    if (
+      idx <
+      contacts.length - 1
+    ) {
 
-    idx++;
+      idx++;
 
-    saveLocal();
+      saveLocal();
 
-    render();
+      render();
+
+    }
 
   }
+);
 
-};
 
 /* =========================================================
    ANTERIOR
 ========================================================= */
 
-$("prev").onclick = () => {
+$("prev").addEventListener(
+  "click",
+  () => {
 
-  if (idx > 0) {
+    if (idx > 0) {
 
-    idx--;
+      idx--;
 
-    saveLocal();
+      saveLocal();
 
-    render();
+      render();
+
+    }
 
   }
+);
 
-};
 
 /* =========================================================
    STATUS
@@ -1050,94 +1177,115 @@ $("prev").onclick = () => {
 
 document
   .querySelectorAll(".status-btn")
-  .forEach(button => {
+  .forEach((button) => {
 
-    button.onclick =
+    button.addEventListener(
+      "click",
       async () => {
 
-        if (!contacts[idx])
+        if (!contacts[idx]) {
           return;
+        }
+
 
         contacts[idx].status =
           button.dataset.status;
+
 
         saveLocal();
 
         render();
 
+
         toast(
           "Status salvo neste dispositivo"
         );
+
 
         await saveStatusToServer(
           button.dataset.status
         );
 
-      };
+      }
+    );
 
   });
+
 
 /* =========================================================
    RECOMEÇAR
 ========================================================= */
 
-$("reset").onclick = () => {
+$("reset").addEventListener(
+  "click",
+  () => {
 
-  if (!contacts.length)
-    return;
+    if (!contacts.length) {
+      return;
+    }
 
-  if (
-    confirm(
-      "Voltar para o primeiro contato e manter os status?"
-    )
-  ) {
 
-    idx = 0;
+    if (
+      confirm(
+        "Voltar para o primeiro contato e manter os status?"
+      )
+    ) {
 
-    saveLocal();
+      idx = 0;
 
-    render();
+      saveLocal();
+
+      render();
+
+    }
 
   }
+);
 
-};
 
 /* =========================================================
    NOVA LISTA
 ========================================================= */
 
-$("newList").onclick = () => {
+$("newList").addEventListener(
+  "click",
+  () => {
 
-  if (
-    !confirm(
-      "Substituir a lista atual?\n\n" +
-      "Os contatos e status atuais serão removidos deste dispositivo."
-    )
-  ) {
+    if (
+      !confirm(
+        "Substituir a lista atual? Os contatos e status atuais serão removidos deste dispositivo."
+      )
+    ) {
 
-    return;
+      return;
+
+    }
+
+
+    contacts = [];
+
+    idx = 0;
+
+
+    localStorage.removeItem(
+      storageKey()
+    );
+
+
+    render();
+
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
 
   }
+);
 
-  contacts = [];
-
-  idx = 0;
-
-  localStorage.removeItem(
-    storageKey()
-  );
-
-  render();
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
-
-};
 
 /* =========================================================
-   INICIALIZAÇÃO
+   INICIALIZAÇÃO DO USUÁRIO
 ========================================================= */
 
 async function start(current) {
@@ -1145,34 +1293,46 @@ async function start(current) {
   currentUser =
     current.user;
 
+
   $("userBadge").textContent =
     current.profile.full_name ||
     current.user.email;
+
 
   $("authGate")
     .classList
     .add("hidden");
 
+
   $("app")
     .classList
     .remove("hidden");
+
 
   if (loadLocal()) {
 
     render();
 
   }
-
 }
+
 
 /* =========================================================
    AUTENTICAÇÃO
 ========================================================= */
 
 bindAuthUI(
-  async current =>
-    start(current)
+  async (current) => {
+
+    await start(current);
+
+  }
 );
+
+
+/* =========================================================
+   VERIFICAR USUÁRIO APROVADO
+========================================================= */
 
 (async () => {
 
@@ -1181,18 +1341,33 @@ bindAuthUI(
     const current =
       await requireApprovedUser();
 
+
     if (current) {
 
       await start(current);
 
     }
 
-  } catch (err) {
+  } catch (error) {
 
-    document.getElementById(
-      "authMessage"
-    ).textContent =
-      err.message;
+    console.error(
+      "Erro ao verificar usuário:",
+      error
+    );
+
+
+    const message =
+      document.getElementById(
+        "authMessage"
+      );
+
+
+    if (message) {
+
+      message.textContent =
+        error.message;
+
+    }
 
   }
 
