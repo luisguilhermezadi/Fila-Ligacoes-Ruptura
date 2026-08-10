@@ -3,13 +3,12 @@ import { bindAuthUI, requireApprovedUser } from "./auth.js";
 
 let currentUser = null;
 
-const STORAGE_PREFIX = "callup_cons_v4_";
+const STORAGE_PREFIX = "callup_cons_v5_";
 
 let contacts = [];
 let idx = 0;
 
 const $ = (id) => document.getElementById(id);
-
 
 /* =========================================================
    UTILITÁRIOS
@@ -22,7 +21,6 @@ const normalize = (value) =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
-
 function findCol(headers, words) {
   return headers.findIndex((header) =>
     words.some((word) =>
@@ -31,13 +29,11 @@ function findCol(headers, words) {
   );
 }
 
-
 /* =========================================================
    LIMPEZA DO TELEFONE
 ========================================================= */
 
 function cleanPhone(value) {
-
   let phone = String(value ?? "").trim();
 
   if (!phone) {
@@ -51,93 +47,68 @@ function cleanPhone(value) {
   return phone.replace(/\D/g, "");
 }
 
-
 /* =========================================================
-   CONVERSÃO PARA BASE BRASILEIRA
-=========================================================
+   TRANSFORMA QUALQUER FORMATO EM:
 
-   O objetivo desta função é retirar:
+   DDD + NÚMERO
 
-   +55
-   55
-   021
-   015
-   041
-   031
-   0 inicial
-
-   deixando apenas:
-
-   DDD + número
-
-   Exemplo:
+   Exemplos:
 
    02111999999999
-   -> 11999999999
-
    01511999999999
-   -> 11999999999
+   04111999999999
+   03111999999999
 
    5511999999999
-   -> 11999999999
 
+   011999999999
+
+   Tudo vira:
+
+   11999999999
 ========================================================= */
 
 function baseBrazilianNumber(raw) {
-
   let number = cleanPhone(raw);
 
   if (!number) {
     return "";
   }
 
-
-  /* Remove código do país */
-
+  /* Remove código internacional 55 */
   if (number.startsWith("55")) {
     number = number.slice(2);
   }
 
-
   /*
-   * Remove código de operadora existente.
+   * Remove código de operadora.
    *
-   * 021 + DDD + número
-   * 015 + DDD + número
-   * 041 + DDD + número
-   * 031 + DDD + número
+   * IMPORTANTE:
+   * Isso acontece antes de aplicar
+   * uma nova operadora.
    */
+  const operatorCodes = ["021", "015", "041", "031"];
 
-  if (
-    number.startsWith("021") ||
-    number.startsWith("015") ||
-    number.startsWith("041") ||
-    number.startsWith("031")
-  ) {
-    number = number.slice(3);
+  for (const code of operatorCodes) {
+    if (number.startsWith(code)) {
+      number = number.slice(code.length);
+      break;
+    }
   }
 
-
-  /*
-   * Se ainda houver um zero inicial,
-   * remove esse zero.
-   */
-
-  if (number.startsWith("0")) {
+  /* Remove zero nacional inicial */
+  while (number.startsWith("0")) {
     number = number.slice(1);
   }
-
 
   return number;
 }
 
-
 /* =========================================================
-   APLICAÇÃO DA OPERADORA
+   APLICA OPERADORA
 ========================================================= */
 
 function applyOperator(raw, operator) {
-
   const base = baseBrazilianNumber(raw);
 
   if (!base) {
@@ -146,32 +117,55 @@ function applyOperator(raw, operator) {
 
   /*
    * Sem operadora:
-   * mantém DDD + número.
+   *
+   * 11999999999
    */
-
   if (!operator) {
     return base;
   }
 
   /*
-   * Operadora:
+   * Com operadora:
    *
-   * 021 + DDD + número
-   * 015 + DDD + número
-   * 041 + DDD + número
-   * 031 + DDD + número
+   * Claro = 02111999999999
+   * Vivo  = 01511999999999
+   * TIM   = 04111999999999
+   * Oi    = 03111999999999
    */
-
-  return operator + base;
+  return `${operator}${base}`;
 }
 
+/* =========================================================
+   DETECTA OPERADORA DO NÚMERO
+========================================================= */
+
+function detectOperator(raw) {
+  const number = cleanPhone(raw);
+
+  if (number.startsWith("021")) {
+    return "021";
+  }
+
+  if (number.startsWith("015")) {
+    return "015";
+  }
+
+  if (number.startsWith("041")) {
+    return "041";
+  }
+
+  if (number.startsWith("031")) {
+    return "031";
+  }
+
+  return "";
+}
 
 /* =========================================================
    NÚMERO PARA LIGAÇÃO
 ========================================================= */
 
 function telNumber(raw) {
-
   const number = cleanPhone(raw);
 
   if (!number) {
@@ -179,13 +173,9 @@ function telNumber(raw) {
   }
 
   /*
-   * Se já estiver em formato:
-   *
-   * 0XX + DDD + número
-   *
-   * mantém exatamente assim.
+   * Se já tiver código de operadora,
+   * usa exatamente o número salvo.
    */
-
   if (
     number.startsWith("021") ||
     number.startsWith("015") ||
@@ -196,115 +186,86 @@ function telNumber(raw) {
   }
 
   /*
-   * Se estiver com 55:
-   * transforma para +55...
+   * Número internacional.
    */
-
   if (number.startsWith("55")) {
-    return "+" + number;
+    return `+${number}`;
   }
 
   /*
-   * Caso seja DDD + número sem operadora,
-   * liga diretamente.
+   * Número nacional sem operadora.
    */
-
   return number;
 }
-
 
 /* =========================================================
    FORMATAÇÃO VISUAL
 ========================================================= */
 
 function formatPhone(raw) {
-
   let number = cleanPhone(raw);
 
   if (!number) {
     return "—";
   }
 
-
-  /*
-   * Número com código de operadora:
-   *
-   * 021 + 11 + 999999999
-   */
-
   let operator = "";
 
-  if (
-    number.startsWith("021") ||
-    number.startsWith("015") ||
-    number.startsWith("041") ||
-    number.startsWith("031")
-  ) {
-    operator = number.slice(0, 3);
+  const detected = detectOperator(number);
+
+  if (detected) {
+    operator = detected;
     number = number.slice(3);
   }
-
-
-  /*
-   * Remove 55 para exibição.
-   */
 
   if (number.startsWith("55")) {
     number = number.slice(2);
   }
 
-
   let formatted = number;
 
   if (number.length === 11) {
     formatted =
-      "(" +
-      number.slice(0, 2) +
-      ") " +
-      number.slice(2, 7) +
-      "-" +
-      number.slice(7);
-  }
-
-  else if (number.length === 10) {
+      `(${number.slice(0, 2)}) ` +
+      `${number.slice(2, 7)}-` +
+      `${number.slice(7)}`;
+  } else if (number.length === 10) {
     formatted =
-      "(" +
-      number.slice(0, 2) +
-      ") " +
-      number.slice(2, 6) +
-      "-" +
-      number.slice(6);
+      `(${number.slice(0, 2)}) ` +
+      `${number.slice(2, 6)}-` +
+      `${number.slice(6)}`;
   }
-
 
   if (operator) {
-    return operator + " " + formatted;
+    return `${operator} ${formatted}`;
   }
 
   return formatted;
 }
 
-
 /* =========================================================
-   NOME / INICIAIS
+   INICIAIS
 ========================================================= */
 
 function initials(name) {
+  const parts = String(name || "?")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
-  const parts =
-    String(name || "?")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+  if (!parts.length) {
+    return "?";
+  }
 
   return (
     (parts[0]?.[0] || "?") +
-    (parts.length > 1
-      ? parts[parts.length - 1][0]
-      : "")
+    (
+      parts.length > 1
+        ? parts[parts.length - 1][0]
+        : ""
+    )
   );
 }
-
 
 /* =========================================================
    STORAGE
@@ -314,11 +275,8 @@ function storageKey() {
   return STORAGE_PREFIX + (currentUser?.id || "anonymous");
 }
 
-
 function saveLocal() {
-
   try {
-
     localStorage.setItem(
       storageKey(),
       JSON.stringify({
@@ -327,22 +285,16 @@ function saveLocal() {
         savedAt: Date.now()
       })
     );
-
   } catch (error) {
-
     console.error(
       "Erro ao salvar lista:",
       error
     );
-
   }
 }
 
-
 function loadLocal() {
-
   try {
-
     const raw =
       localStorage.getItem(storageKey());
 
@@ -350,8 +302,7 @@ function loadLocal() {
       return false;
     }
 
-    const data =
-      JSON.parse(raw);
+    const data = JSON.parse(raw);
 
     if (
       !Array.isArray(data.contacts) ||
@@ -371,9 +322,7 @@ function loadLocal() {
     );
 
     return true;
-
   } catch (error) {
-
     console.error(
       "Erro ao carregar lista:",
       error
@@ -383,69 +332,61 @@ function loadLocal() {
   }
 }
 
-
 /* =========================================================
    TOAST
 ========================================================= */
 
 function toast(message) {
-
   const element = $("toast");
 
-  element.textContent = message;
+  if (!element) {
+    return;
+  }
+
+  element.textContent = String(message);
 
   element.classList.add("show");
 
-  clearTimeout(
-    window.__toast
-  );
+  clearTimeout(window.__callupToast);
 
-  window.__toast =
+  window.__callupToast =
     setTimeout(() => {
-
       element.classList.remove("show");
-
-    }, 2500);
+    }, 3000);
 }
-
 
 /* =========================================================
    PROGRESSO
 ========================================================= */
 
-function pct() {
-
+function getProgress() {
   if (!contacts.length) {
     return 0;
   }
 
-  return (
+  const completed =
     contacts.filter(
-      (contact) => contact.status
-    ).length /
-    contacts.length
-  ) * 100;
+      (contact) => Boolean(contact.status)
+    ).length;
+
+  return (completed / contacts.length) * 100;
 }
 
-
 /* =========================================================
-   OPERADORA ATUAL
+   OPERADORA
 ========================================================= */
 
 function currentOperator() {
-
   const select = $("operator");
 
   if (!select) {
     return "";
   }
 
-  return select.value;
+  return select.value || "";
 }
 
-
 function operatorName(code) {
-
   const names = {
     "021": "CLARO",
     "015": "VIVO",
@@ -456,15 +397,29 @@ function operatorName(code) {
   return names[code] || "SEM OPERADORA";
 }
 
-
 /* =========================================================
-   ALTERAR NÚMEROS DA LISTA
+   ALTERAR NÚMEROS CONFORME OPERADORA
+
+   ESTA É A PARTE PRINCIPAL DA CORREÇÃO.
+
+   Exemplo:
+
+   Antes:
+   02111999999999
+
+   Escolher VIVO:
+
+   Depois:
+   01511999999999
+
+   Não fica:
+
+   0150211199999999
+
 ========================================================= */
 
 function updateNumbersForOperator() {
-
   if (!contacts.length) {
-
     toast(
       "Importe uma lista antes de alterar os números."
     );
@@ -472,244 +427,264 @@ function updateNumbersForOperator() {
     return;
   }
 
+  const select = $("operator");
 
-  const operator =
-    currentOperator();
+  if (!select) {
+    toast(
+      "Seletor de operadora não encontrado."
+    );
 
+    return;
+  }
 
-  /*
-   * Cria uma nova lista de contatos
-   * aplicando a operadora escolhida.
-   */
+  const operator = select.value || "";
+
+  let changed = 0;
+  let invalid = 0;
 
   contacts = contacts.map((contact) => {
+    const original =
+      String(contact.phone || "");
+
+    const base =
+      baseBrazilianNumber(original);
+
+    if (!base || base.length < 10) {
+      invalid++;
+
+      return {
+        ...contact
+      };
+    }
+
+    const newPhone =
+      applyOperator(
+        base,
+        operator
+      );
+
+    if (
+      newPhone &&
+      newPhone !== original
+    ) {
+      changed++;
+    }
 
     return {
       ...contact,
-      phone: applyOperator(
-        contact.phone,
-        operator
-      )
+      phone: newPhone
     };
-
   });
 
-
   saveLocal();
-
   render();
 
-
-  if (operator) {
-
+  if (!operator) {
     toast(
-      `Números atualizados para ${operatorName(operator)} — ${operator}`
+      `Operadora removida de ${changed} número(s).`
     );
 
-  } else {
-
-    toast(
-      "Operadora removida dos números."
-    );
-
+    return;
   }
+
+  toast(
+    `Números alterados: ${changed}`
+  );
+
+  console.log(
+    "ALTERAÇÃO DE OPERADORA",
+    {
+      operadora: operator,
+      nome: operatorName(operator),
+      alterados: changed,
+      invalidos: invalid,
+      total: contacts.length
+    }
+  );
 }
 
-
 /* =========================================================
-   RENDERIZAÇÃO
+   RENDER
 ========================================================= */
 
 function render() {
-
   const hasContacts =
     contacts.length > 0;
 
-  $("dashboard")
-    .classList
-    .toggle(
+  const dashboard =
+    $("dashboard");
+
+  if (dashboard) {
+    dashboard.classList.toggle(
       "hidden",
       !hasContacts
     );
+  }
 
   if (!hasContacts) {
     return;
   }
 
-
-  idx =
-    Math.max(
-      0,
-      Math.min(
-        idx,
-        contacts.length - 1
-      )
-    );
-
+  idx = Math.max(
+    0,
+    Math.min(
+      idx,
+      contacts.length - 1
+    )
+  );
 
   const contact =
     contacts[idx];
 
-
   const done =
     contacts.filter(
-      (item) => item.status
+      (item) => Boolean(item.status)
     ).length;
-
 
   const pending =
     contacts.length - done;
 
-
   const progress =
-    pct();
+    getProgress();
 
+  if ($("total")) {
+    $("total").textContent =
+      contacts.length.toLocaleString("pt-BR");
+  }
 
-  $("total").textContent =
-    contacts.length.toLocaleString("pt-BR");
+  if ($("done")) {
+    $("done").textContent =
+      done.toLocaleString("pt-BR");
+  }
 
-  $("done").textContent =
-    done.toLocaleString("pt-BR");
+  if ($("pending")) {
+    $("pending").textContent =
+      pending.toLocaleString("pt-BR");
+  }
 
-  $("pending").textContent =
-    pending.toLocaleString("pt-BR");
+  if ($("percent")) {
+    $("percent").textContent =
+      `${progress.toFixed(0)}%`;
+  }
 
+  if ($("counter")) {
+    $("counter").textContent =
+      `${idx + 1} / ${contacts.length.toLocaleString("pt-BR")}`;
+  }
 
-  $("percent").textContent =
-    (
-      progress < 10
-        ? progress.toFixed(2)
-        : progress.toFixed(0)
-    ) + "%";
+  if ($("name")) {
+    $("name").textContent =
+      contact.name || "Sem nome";
+  }
 
+  if ($("phone")) {
+    $("phone").textContent =
+      formatPhone(contact.phone);
+  }
 
-  $("counter").textContent =
-    `${idx + 1} / ${contacts.length.toLocaleString("pt-BR")}`;
-
-
-  $("name").textContent =
-    contact.name || "Sem nome";
-
-
-  $("phone").textContent =
-    formatPhone(contact.phone);
-
-
-  $("avatar").textContent =
-    initials(contact.name)
-      .slice(0, 2)
-      .toUpperCase();
-
+  if ($("avatar")) {
+    $("avatar").textContent =
+      initials(contact.name)
+        .slice(0, 2)
+        .toUpperCase();
+  }
 
   const selectedOperator =
     currentOperator();
 
+  const operatorInfo =
+    $("operatorInfo");
 
-  if (selectedOperator) {
-
-    $("operatorInfo").textContent =
-      `${operatorName(selectedOperator)} — ${selectedOperator}`;
-
-  } else {
-
-    $("operatorInfo").textContent =
-      "Sem código de operadora";
-
+  if (operatorInfo) {
+    operatorInfo.textContent =
+      selectedOperator
+        ? `${operatorName(selectedOperator)} — ${selectedOperator}`
+        : "Sem código de operadora";
   }
 
+  if ($("progressText")) {
+    $("progressText").textContent =
+      `${done.toLocaleString("pt-BR")} / ${contacts.length.toLocaleString("pt-BR")} contatos`;
+  }
 
-  $("progressText").textContent =
-    `${done.toLocaleString("pt-BR")} / ${contacts.length.toLocaleString("pt-BR")} contatos`;
+  if ($("progressPct")) {
+    $("progressPct").textContent =
+      `${progress.toFixed(0)}% concluído`;
+  }
 
+  if ($("progressFill")) {
+    $("progressFill").style.width =
+      `${Math.min(100, progress)}%`;
+  }
 
-  $("progressPct").textContent =
-    `${progress.toFixed(2)}% concluído`;
+  if ($("prev")) {
+    $("prev").disabled =
+      idx === 0;
+  }
 
-
-  $("progressFill").style.width =
-    Math.min(100, progress) + "%";
-
-
-  $("prev").disabled =
-    idx === 0;
-
-
-  $("next").disabled =
-    idx === contacts.length - 1;
-
+  if ($("next")) {
+    $("next").disabled =
+      idx === contacts.length - 1;
+  }
 
   document
     .querySelectorAll(".status-btn")
     .forEach((button) => {
-
       button.classList.toggle(
         "active",
-        button.dataset.status === contact.status
+        button.dataset.status ===
+          contact.status
       );
-
     });
-
 
   renderQueue();
 }
-
 
 /* =========================================================
    STATUS
 ========================================================= */
 
 function statusLabel(status) {
+  const labels = {
+    atendeu: "✓ ATENDEU",
+    nao_atendeu: "✕ NÃO ATENDEU",
+    retornar: "↩ RETORNAR",
+    sem_interesse: "🚫 SEM INTERESSE"
+  };
 
-  return {
-
-    atendeu:
-      "✓ ATENDEU",
-
-    nao_atendeu:
-      "✕ NÃO ATENDEU",
-
-    retornar:
-      "↩ RETORNAR",
-
-    sem_interesse:
-      "🚫 SEM INTERESSE"
-
-  }[status] || "PENDENTE";
+  return labels[status] || "PENDENTE";
 }
-
 
 /* =========================================================
    FILA
 ========================================================= */
 
 function renderQueue() {
-
   const output =
     $("queue");
 
+  if (!output) {
+    return;
+  }
+
   output.innerHTML = "";
 
-
-  $("queueCount").textContent =
-    contacts.length.toLocaleString("pt-BR") +
-    " contatos";
-
+  if ($("queueCount")) {
+    $("queueCount").textContent =
+      `${contacts.length.toLocaleString("pt-BR")} contatos`;
+  }
 
   if (!contacts.length) {
-
     output.innerHTML =
       '<div class="empty">Nenhum contato na fila.</div>';
 
     return;
   }
 
-
   contacts.forEach(
     (contact, position) => {
-
       const element =
         document.createElement("div");
-
 
       element.className =
         "queue-item" +
@@ -719,112 +694,83 @@ function renderQueue() {
             : ""
         );
 
-
       element.innerHTML = `
         <div class="qnum">
           ${position + 1}
         </div>
 
         <div class="qinfo">
-
           <div class="qname"></div>
-
           <div class="qphone"></div>
-
           <div class="qstatus"></div>
-
         </div>
       `;
 
+      const nameElement =
+        element.querySelector(".qname");
 
-      element
-        .querySelector(".qname")
-        .textContent =
-          contact.name || "Sem nome";
-
-
-      element
-        .querySelector(".qphone")
-        .textContent =
-          formatPhone(contact.phone);
-
+      const phoneElement =
+        element.querySelector(".qphone");
 
       const statusElement =
         element.querySelector(".qstatus");
 
+      nameElement.textContent =
+        contact.name || "Sem nome";
+
+      phoneElement.textContent =
+        formatPhone(contact.phone);
 
       statusElement.textContent =
         statusLabel(contact.status);
-
 
       statusElement.classList.add(
         contact.status || "pending"
       );
 
-
-      /*
-       * Permite clicar em qualquer contato
-       * da fila para torná-lo atual.
-       */
-
       element.addEventListener(
         "click",
         () => {
-
           idx = position;
 
           saveLocal();
-
           render();
-
         }
       );
 
-
       output.appendChild(element);
-
     }
   );
-
 
   const current =
     output.querySelector(
       ".queue-item.current"
     );
 
-
   if (current) {
-
     current.scrollIntoView({
       block: "nearest",
       behavior: "smooth"
     });
-
   }
 }
-
 
 /* =========================================================
    ABRIR LIGAÇÃO
 ========================================================= */
 
 function openCurrent() {
-
   const contact =
     contacts[idx];
-
 
   if (!contact) {
     return;
   }
 
-
   const number =
     telNumber(contact.phone);
 
-
   if (!number) {
-
     toast(
       "Este contato não possui um número válido."
     );
@@ -832,344 +778,299 @@ function openCurrent() {
     return;
   }
 
-
   contact.called = true;
 
   saveLocal();
-
   render();
 
-
-  /*
-   * IMPORTANTE:
-   * aqui é usado o número que já foi
-   * atualizado pela operadora.
-   */
-
   window.location.href =
-    "tel:" + number;
+    `tel:${number}`;
 }
 
-
 /* =========================================================
-   SALVAR STATUS NO SUPABASE
+   SUPABASE
 ========================================================= */
 
 async function saveStatusToServer(status) {
-
   try {
-
     await supabase.rpc(
       "record_contact_status_event",
       {
         p_status: status
       }
     );
-
   } catch (error) {
-
     console.error(
       "Erro ao registrar status:",
       error
     );
-
   }
 }
 
-
 /* =========================================================
-   IMPORTAÇÃO DA PLANILHA
+   IMPORTAÇÃO
 ========================================================= */
 
-$("file").addEventListener(
-  "change",
-  async (event) => {
+const fileInput =
+  $("file");
 
-    const file =
-      event.target.files[0];
+if (fileInput) {
+  fileInput.addEventListener(
+    "change",
+    async (event) => {
+      const file =
+        event.target.files[0];
 
-
-    if (!file) {
-      return;
-    }
-
-
-    try {
-
-      const data =
-        await file.arrayBuffer();
-
-
-      const workbook =
-        XLSX.read(
-          data,
-          { type: "array" }
-        );
-
-
-      const worksheet =
-        workbook.Sheets[
-          workbook.SheetNames[0]
-        ];
-
-
-      const rows =
-        XLSX.utils.sheet_to_json(
-          worksheet,
-          {
-            header: 1,
-            defval: ""
-          }
-        );
-
-
-      if (!rows.length) {
-
-        throw new Error(
-          "Planilha vazia."
-        );
-
+      if (!file) {
+        return;
       }
 
+      try {
+        const data =
+          await file.arrayBuffer();
 
-      const headers =
-        rows[0];
-
-
-      /*
-       * Coluna 1 = nome
-       * Coluna 2 = número
-       *
-       * Também mantém detecção
-       * automática como compatibilidade.
-       */
-
-      let nameIndex =
-        findCol(
-          headers,
-          [
-            "nome",
-            "name",
-            "cliente",
-            "contato"
-          ]
-        );
-
-
-      let phoneIndex =
-        findCol(
-          headers,
-          [
-            "numero",
-            "telefone",
-            "celular",
-            "phone",
-            "fone",
-            "whatsapp"
-          ]
-        );
-
-
-      if (nameIndex < 0) {
-        nameIndex = 0;
-      }
-
-
-      if (phoneIndex < 0) {
-
-        phoneIndex =
-          headers.length > 1
-            ? 1
-            : 0;
-
-      }
-
-
-      const selectedOperator =
-        currentOperator();
-
-
-      const parsed =
-        rows
-          .slice(1)
-          .map((row) => {
-
-            const originalPhone =
-              cleanPhone(
-                row[phoneIndex]
-              );
-
-
-            /*
-             * Assim que importa,
-             * já aplica a operadora selecionada.
-             */
-
-            const finalPhone =
-              applyOperator(
-                originalPhone,
-                selectedOperator
-              );
-
-
-            return {
-
-              name:
-                String(
-                  row[nameIndex] ?? ""
-                ).trim(),
-
-              phone:
-                finalPhone,
-
-              status:
-                "",
-
-              called:
-                false
-
-            };
-
-          })
-          .filter(
-            (contact) =>
-              baseBrazilianNumber(
-                contact.phone
-              ).length >= 10
+        const workbook =
+          XLSX.read(
+            data,
+            {
+              type: "array"
+            }
           );
 
+        const worksheet =
+          workbook.Sheets[
+            workbook.SheetNames[0]
+          ];
 
-      if (!parsed.length) {
+        const rows =
+          XLSX.utils.sheet_to_json(
+            worksheet,
+            {
+              header: 1,
+              defval: ""
+            }
+          );
 
-        throw new Error(
-          "Nenhum telefone válido encontrado."
+        if (!rows.length) {
+          throw new Error(
+            "Planilha vazia."
+          );
+        }
+
+        const headers =
+          rows[0];
+
+        let nameIndex =
+          findCol(
+            headers,
+            [
+              "nome",
+              "name",
+              "cliente",
+              "contato"
+            ]
+          );
+
+        let phoneIndex =
+          findCol(
+            headers,
+            [
+              "numero",
+              "telefone",
+              "celular",
+              "phone",
+              "fone",
+              "whatsapp"
+            ]
+          );
+
+        /*
+         * Se não detectar cabeçalho,
+         * utiliza obrigatoriamente:
+         *
+         * coluna 1 = nome
+         * coluna 2 = número
+         */
+        if (nameIndex < 0) {
+          nameIndex = 0;
+        }
+
+        if (phoneIndex < 0) {
+          phoneIndex =
+            headers.length > 1
+              ? 1
+              : 0;
+        }
+
+        const selectedOperator =
+          currentOperator();
+
+        const parsed =
+          rows
+            .slice(1)
+            .map((row) => {
+              const name =
+                String(
+                  row[nameIndex] ?? ""
+                ).trim();
+
+              const originalPhone =
+                cleanPhone(
+                  row[phoneIndex]
+                );
+
+              const base =
+                baseBrazilianNumber(
+                  originalPhone
+                );
+
+              if (
+                !base ||
+                base.length < 10
+              ) {
+                return null;
+              }
+
+              const finalPhone =
+                applyOperator(
+                  base,
+                  selectedOperator
+                );
+
+              return {
+                name:
+                  name || "Sem nome",
+
+                phone:
+                  finalPhone,
+
+                status: "",
+
+                called: false
+              };
+            })
+            .filter(Boolean);
+
+        if (!parsed.length) {
+          throw new Error(
+            "Nenhum telefone válido encontrado."
+          );
+        }
+
+        contacts =
+          parsed;
+
+        idx = 0;
+
+        saveLocal();
+        render();
+
+        toast(
+          `${contacts.length.toLocaleString("pt-BR")} contatos importados`
         );
 
-      }
+        setTimeout(() => {
+          const dashboard =
+            $("dashboard");
 
-
-      contacts =
-        parsed;
-
-
-      idx = 0;
-
-
-      saveLocal();
-
-      render();
-
-
-      toast(
-        `${contacts.length.toLocaleString("pt-BR")} contatos importados`
-      );
-
-
-      setTimeout(
-        () => {
-
-          $("dashboard")
-            .scrollIntoView({
+          if (dashboard) {
+            dashboard.scrollIntoView({
               behavior: "smooth",
               block: "start"
             });
+          }
+        }, 100);
 
-        },
-        80
-      );
+      } catch (error) {
+        console.error(
+          "Erro ao importar planilha:",
+          error
+        );
 
+        alert(
+          "Não consegui ler a planilha. Verifique se a coluna 1 contém o nome e a coluna 2 contém o número."
+        );
+      }
 
-    } catch (error) {
-
-      console.error(
-        "Erro ao importar planilha:",
-        error
-      );
-
-
-      alert(
-        "Não consegui ler a planilha. Verifique se a coluna 1 contém o nome e a coluna 2 contém o número."
-      );
-
+      event.target.value = "";
     }
-
-
-    event.target.value = "";
-
-  }
-);
-
+  );
+}
 
 /* =========================================================
-   BOTÃO ALTERAR OPERADORA
+   ALTERAR OPERADORA
 ========================================================= */
 
-$("changeOperatorBtn").addEventListener(
-  "click",
-  () => {
+const changeOperatorBtn =
+  $("changeOperatorBtn");
 
-    updateNumbersForOperator();
-
-  }
-);
-
+if (changeOperatorBtn) {
+  changeOperatorBtn.addEventListener(
+    "click",
+    () => {
+      updateNumbersForOperator();
+    }
+  );
+}
 
 /* =========================================================
    LIGAR
 ========================================================= */
 
-$("call").addEventListener(
-  "click",
-  openCurrent
-);
+const callButton =
+  $("call");
 
+if (callButton) {
+  callButton.addEventListener(
+    "click",
+    openCurrent
+  );
+}
 
 /* =========================================================
    PRÓXIMO
 ========================================================= */
 
-$("next").addEventListener(
-  "click",
-  () => {
+const nextButton =
+  $("next");
 
-    if (
-      idx <
-      contacts.length - 1
-    ) {
+if (nextButton) {
+  nextButton.addEventListener(
+    "click",
+    () => {
+      if (
+        idx <
+        contacts.length - 1
+      ) {
+        idx++;
 
-      idx++;
-
-      saveLocal();
-
-      render();
-
+        saveLocal();
+        render();
+      }
     }
-
-  }
-);
-
+  );
+}
 
 /* =========================================================
    ANTERIOR
 ========================================================= */
 
-$("prev").addEventListener(
-  "click",
-  () => {
+const prevButton =
+  $("prev");
 
-    if (idx > 0) {
+if (prevButton) {
+  prevButton.addEventListener(
+    "click",
+    () => {
+      if (idx > 0) {
+        idx--;
 
-      idx--;
-
-      saveLocal();
-
-      render();
-
+        saveLocal();
+        render();
+      }
     }
-
-  }
-);
-
+  );
+}
 
 /* =========================================================
    STATUS
@@ -1178,144 +1079,159 @@ $("prev").addEventListener(
 document
   .querySelectorAll(".status-btn")
   .forEach((button) => {
-
     button.addEventListener(
       "click",
       async () => {
-
         if (!contacts[idx]) {
           return;
         }
 
-
         contacts[idx].status =
           button.dataset.status;
 
-
         saveLocal();
-
         render();
-
 
         toast(
           "Status salvo neste dispositivo"
         );
 
-
         await saveStatusToServer(
           button.dataset.status
         );
-
       }
     );
-
   });
-
 
 /* =========================================================
    RECOMEÇAR
 ========================================================= */
 
-$("reset").addEventListener(
-  "click",
-  () => {
+const resetButton =
+  $("reset");
 
-    if (!contacts.length) {
-      return;
+if (resetButton) {
+  resetButton.addEventListener(
+    "click",
+    () => {
+      if (!contacts.length) {
+        return;
+      }
+
+      if (
+        confirm(
+          "Voltar para o primeiro contato e manter os status?"
+        )
+      ) {
+        idx = 0;
+
+        saveLocal();
+        render();
+      }
     }
-
-
-    if (
-      confirm(
-        "Voltar para o primeiro contato e manter os status?"
-      )
-    ) {
-
-      idx = 0;
-
-      saveLocal();
-
-      render();
-
-    }
-
-  }
-);
-
+  );
+}
 
 /* =========================================================
    NOVA LISTA
 ========================================================= */
 
-$("newList").addEventListener(
-  "click",
-  () => {
+const newListButton =
+  $("newList");
 
-    if (
-      !confirm(
-        "Substituir a lista atual? Os contatos e status atuais serão removidos deste dispositivo."
-      )
-    ) {
+if (newListButton) {
+  newListButton.addEventListener(
+    "click",
+    () => {
+      if (
+        !confirm(
+          "Substituir a lista atual? Os contatos e status atuais serão removidos deste dispositivo."
+        )
+      ) {
+        return;
+      }
 
-      return;
+      contacts = [];
+      idx = 0;
 
+      localStorage.removeItem(
+        storageKey()
+      );
+
+      render();
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
     }
-
-
-    contacts = [];
-
-    idx = 0;
-
-
-    localStorage.removeItem(
-      storageKey()
-    );
-
-
-    render();
-
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
-
-  }
-);
-
+  );
+}
 
 /* =========================================================
-   INICIALIZAÇÃO DO USUÁRIO
+   SAIR
+
+   Ao clicar em SAIR:
+   1. Faz logout
+   2. Aguarda
+   3. Recarrega a página inteira
+   4. Usuário volta para tela de login
+========================================================= */
+
+const logoutButton =
+  $("logoutBtn");
+
+if (logoutButton) {
+  logoutButton.addEventListener(
+    "click",
+    async () => {
+      logoutButton.disabled = true;
+
+      try {
+        const { error } =
+          await supabase.auth.signOut();
+
+        if (error) {
+          throw error;
+        }
+      } catch (error) {
+        console.error(
+          "Erro ao sair:",
+          error
+        );
+      } finally {
+        window.location.reload();
+      }
+    }
+  );
+}
+
+/* =========================================================
+   INICIALIZAÇÃO
 ========================================================= */
 
 async function start(current) {
-
   currentUser =
     current.user;
 
-
-  $("userBadge").textContent =
-    current.profile.full_name ||
-    current.user.email;
-
+  if ($("userBadge")) {
+    $("userBadge").textContent =
+      current.profile?.full_name ||
+      current.user.email;
+  }
 
   $("authGate")
-    .classList
+    ?.classList
     .add("hidden");
 
-
   $("app")
-    .classList
+    ?.classList
     .remove("hidden");
 
-
   if (loadLocal()) {
-
     render();
-
   }
 }
-
 
 /* =========================================================
    AUTENTICAÇÃO
@@ -1323,52 +1239,35 @@ async function start(current) {
 
 bindAuthUI(
   async (current) => {
-
     await start(current);
-
   }
 );
-
 
 /* =========================================================
    VERIFICAR USUÁRIO APROVADO
 ========================================================= */
 
 (async () => {
-
   try {
-
     const current =
       await requireApprovedUser();
 
-
     if (current) {
-
       await start(current);
-
     }
-
   } catch (error) {
-
     console.error(
       "Erro ao verificar usuário:",
       error
     );
 
-
     const message =
-      document.getElementById(
-        "authMessage"
-      );
-
+      $("authMessage");
 
     if (message) {
-
       message.textContent =
-        error.message;
-
+        error.message ||
+        "Não foi possível verificar sua conta.";
     }
-
   }
-
 })();
