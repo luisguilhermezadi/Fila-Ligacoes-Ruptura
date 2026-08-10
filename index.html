@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CallUp Cons">
+<meta name="description" content="CallUp Cons — central inteligente de ligações.">
+<link rel="manifest" href="manifest.json">
+<title>CallUp Cons</title>
+<style>
+:root{--bg:#080a0f;--panel:#11141b;--panel2:#171b24;--line:#252b37;--text:#f7f8fa;--muted:#8992a3;--accent:#42d392;--accent2:#2aa66f;--danger:#ff5d68;--warn:#f6c453;--blue:#5d8dff;--shadow:0 18px 55px #0008}
+*{box-sizing:border-box}
+html{background:var(--bg);scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(circle at 50% -10%,#18242a 0,#0b0d12 38%,#080a0f 100%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;min-height:100vh}
+button,input{font:inherit}.wrap{width:min(100% - 28px,760px);margin:auto;padding:22px 0 34px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.brand{display:flex;gap:11px;align-items:center}.brand-mark{width:42px;height:42px;border:1px solid #ffffff1a;border-radius:13px;background:linear-gradient(145deg,#1c2926,#0e1416);display:grid;place-items:center;box-shadow:0 8px 25px #0006}
+.brand-mark svg{width:24px}.brand-name{font-weight:850;letter-spacing:.08em;font-size:14px}.brand-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.badge{font-size:11px;color:#aeb7c7;border:1px solid var(--line);background:#ffffff05;padding:8px 10px;border-radius:999px}
+.hero{padding:25px 3px 20px}.eyebrow{color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;margin-bottom:10px}
+h1{font-size:clamp(31px,8vw,48px);line-height:1.02;margin:0;letter-spacing:-.045em}.hero p{color:var(--muted);font-size:15px;line-height:1.55;max-width:540px;margin:12px 0 0}
+.card{background:linear-gradient(145deg,#141821,#0f1218);border:1px solid #ffffff0d;border-radius:24px;padding:19px;box-shadow:var(--shadow);margin-bottom:14px}
+.import-card{padding:24px}.section-title{font-size:13px;font-weight:800;letter-spacing:.04em}.section-copy{font-size:13px;color:var(--muted);line-height:1.5;margin:7px 0 16px}
+.file-btn{display:flex;align-items:center;justify-content:center;gap:9px;min-height:54px;background:var(--text);color:#090b10;border-radius:16px;font-weight:850;cursor:pointer;transition:.18s transform,.18s opacity;box-shadow:0 10px 30px #0005}.file-btn:active,.btn:active{transform:scale(.98);opacity:.88}input[type=file]{display:none}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.stat{background:#ffffff04;border:1px solid var(--line);border-radius:17px;padding:14px}.stat-label{font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.1em}.stat-value{font-size:22px;font-weight:850;margin-top:5px}.stat.accent .stat-value{color:var(--accent)}
+.current-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.pill{font-size:10px;font-weight:800;letter-spacing:.08em;color:#bfc7d5;background:#ffffff07;border:1px solid var(--line);border-radius:999px;padding:7px 9px}
+.contact{padding:24px 16px 18px;text-align:center;border-radius:21px;background:radial-gradient(circle at 50% 0,#1b2825,#11151d 62%);border:1px solid #ffffff0b}
+.avatar{width:62px;height:62px;border-radius:20px;margin:0 auto 13px;background:#1b2b26;border:1px solid #ffffff12;display:grid;place-items:center;font-size:21px;font-weight:850;color:#9df1c6}
+#name{font-size:clamp(26px,7vw,36px);font-weight:850;letter-spacing:-.035em;word-break:break-word}#phone{font-size:17px;color:#aeb6c4;margin-top:7px}
+.progress-row{display:flex;justify-content:space-between;gap:10px;color:#8992a3;font-size:11px;margin:18px 2px 7px}.progress-row strong{color:#dfe4eb}
+.progress{height:7px;border-radius:99px;background:#252a33;overflow:hidden}.progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:99px;transition:width .35s ease}
+.call{width:100%;min-height:62px;margin-top:16px;border:0;border-radius:18px;background:linear-gradient(135deg,#4be09a,#29b978);color:#06110b;font-size:18px;font-weight:900;box-shadow:0 12px 32px #2fc9842e;cursor:pointer}
+.nav{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}.btn{min-height:49px;border:1px solid var(--line);background:#ffffff05;color:#e9edf3;border-radius:15px;font-weight:800;cursor:pointer;transition:.18s transform,.18s opacity}.btn:disabled{opacity:.35;cursor:not-allowed}
+.status-title{margin-bottom:10px}.statuses{display:grid;grid-template-columns:1fr 1fr;gap:9px}.status-btn{min-height:49px;border:1px solid var(--line);background:#ffffff04;color:#dce1e9;border-radius:15px;font-size:13px;font-weight:800;cursor:pointer;transition:.18s}.status-btn.active{border-color:#4be09a66;background:#173025;color:#8cf0bd}
+.queue{padding:4px 3px 8px;max-height:430px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin}.queue-item{display:flex;gap:11px;align-items:center;padding:12px 4px;border-bottom:1px solid #ffffff08}.queue-item:last-child{border-bottom:0}.qnum{width:27px;height:27px;display:grid;place-items:center;border-radius:9px;background:#ffffff07;color:#8992a3;font-size:11px;font-weight:800}.qinfo{min-width:0}.qname{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qphone{font-size:11px;color:#7f8998;margin-top:3px}.qstatus{display:inline-flex;align-items:center;margin-top:5px;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:850;letter-spacing:.04em;text-transform:uppercase}.qstatus.pending{color:#8992a3;background:#ffffff07;border:1px solid #ffffff0a}.qstatus.atendeu{color:#8cf0bd;background:#173025;border:1px solid #4be09a33}.qstatus.nao_atendeu{color:#ff9ba3;background:#321b20;border:1px solid #ff5d6833}.qstatus.retornar{color:#f8d77d;background:#302918;border:1px solid #f6c45333}.qstatus.sem_interesse{color:#aab4c6;background:#20242c;border:1px solid #ffffff12}.queue-item.current{background:#173025;border:1px solid #4be09a33;border-radius:13px;padding:11px 8px}.empty{color:var(--muted);font-size:13px;padding:10px 2px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.reset{color:#c3cad5}.privacy{text-align:center;color:#6f7888;font-size:11px;line-height:1.5;padding:6px 18px 12px}.privacy strong{color:#aab2c0}.footer{text-align:center;color:#525b6b;font-size:10px;line-height:1.6;padding:10px}.footer b{color:#7c8594}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#1b2029;color:#eef2f6;border:1px solid #ffffff12;border-radius:13px;padding:11px 14px;font-size:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.22s;z-index:20;white-space:nowrap}.toast.show{opacity:1;transform:translate(-50%,0)}
+.hidden{display:none!important}
+@media(min-width:620px){.stats{grid-template-columns:repeat(4,1fr)}.statuses{grid-template-columns:repeat(4,1fr)}.wrap{padding-top:32px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+.auth-gate{min-height:100vh;display:grid;place-items:center;padding:22px;background:radial-gradient(circle at 50% -10%,#18242a 0,#0b0d12 38%,#080a0f 100%)}
+.auth-card{width:min(100%,440px);background:linear-gradient(145deg,#141821,#0f1218);border:1px solid #ffffff12;border-radius:26px;padding:26px;box-shadow:0 18px 55px #0008}
+.auth-logo{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;background:#173025;color:#8cf0bd;font-size:25px;margin-bottom:18px}
+.auth-card h1{font-size:32px;margin:0}.auth-card p{color:var(--muted);line-height:1.5;font-size:13px}
+.auth-card form{display:grid;gap:10px;margin-top:16px}.auth-card input{width:100%;min-height:50px;border:1px solid var(--line);background:#0b0e14;color:var(--text);border-radius:14px;padding:0 14px;outline:none}.auth-card input:focus{border-color:#4be09a66}
+.auth-secondary{width:100%;margin-top:10px}.auth-toast{min-height:18px;margin-top:12px;color:#aeb7c7;font-size:12px;text-align:center}
+.user-actions{display:flex;align-items:center;gap:8px}.logout{min-height:36px;padding:0 11px;font-size:11px}
+@media(max-width:500px){.user-actions .badge{display:none}}
+</style>
+</head>
+<body>
+<div id="authGate" class="auth-gate">
+  <div class="auth-card">
+    <div class="auth-logo">☎</div>
+    <div class="eyebrow">CALLUP CONS</div>
+    <h1>Entre para continuar</h1>
+    <p id="authMessage">Sua conta precisa estar aprovada para acessar a central.</p>
+    <form id="loginForm">
+      <input id="loginEmail" type="email" autocomplete="email" placeholder="E-mail" required>
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Senha" required>
+      <button class="call" type="submit">ENTRAR</button>
+    </form>
+    <button class="btn auth-secondary" id="showSignup">CRIAR CONTA</button>
+    <button class="btn auth-secondary hidden" id="showLogin">VOLTAR AO LOGIN</button>
+    <form id="signupForm" class="hidden">
+      <input id="signupName" type="text" autocomplete="name" placeholder="Nome completo" required>
+      <input id="signupEmail" type="email" autocomplete="email" placeholder="E-mail" required>
+      <input id="signupPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Senha (mín. 8 caracteres)" required>
+      <input id="signupPassword2" type="password" autocomplete="new-password" minlength="8" placeholder="Confirmar senha" required>
+      <button class="call" type="submit">SOLICITAR ACESSO</button>
+    </form>
+    <div id="authToast" class="auth-toast"></div>
+  </div>
+</div>
+
+<div id="app" class="wrap hidden">
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">☎</div>
+    <div><div class="brand-name">CALLUP CONS</div><div class="brand-sub">Central inteligente de ligações</div></div>
+  </div>
+  <div class="user-actions">
+    <span class="badge" id="userBadge">CONTA</span>
+    <button class="btn logout" id="logoutBtn">SAIR</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="eyebrow">Sua fila, no ritmo certo</div>
+  <h1>Organize. Ligue.<br>Avance.</h1>
+  <p>Importe sua lista, abra cada ligação pelo Telefone do dispositivo e avance pela fila sem digitar números.</p>
+</section>
+
+<section class="card import-card" id="importCard">
+  <div class="section-title">IMPORTAR LISTA</div>
+  <div class="section-copy">A planilha deve conter <strong>coluna 1: nome</strong> e <strong>coluna 2: número</strong>. Cada linha representa um contato.</div>
+  <label class="file-btn">＋ &nbsp; IMPORTAR LISTA<input id="file" type="file" accept=".xlsx,.xls,.csv"></label>
+</section>
+
+<section id="dashboard" class="hidden">
+  <div class="stats card">
+    <div class="stat"><div class="stat-label">CONTATOS</div><div class="stat-value" id="total">0</div></div>
+    <div class="stat"><div class="stat-label">REALIZADOS</div><div class="stat-value" id="done">0</div></div>
+    <div class="stat"><div class="stat-label">PENDENTES</div><div class="stat-value" id="pending">0</div></div>
+    <div class="stat accent"><div class="stat-label">PROGRESSO</div><div class="stat-value" id="percent">0%</div></div>
+  </div>
+
+  <section class="card">
+    <div class="current-head"><div class="section-title">PRÓXIMA LIGAÇÃO</div><div class="pill" id="counter">1 / 0</div></div>
+    <div class="contact">
+      <div class="avatar" id="avatar">?</div>
+      <div id="name">—</div>
+      <div id="phone">—</div>
+    </div>
+    <div class="progress-row"><span id="progressText">0 / 0 contatos</span><strong id="progressPct">0% concluído</strong></div>
+    <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+    <button class="call" id="call">📞 &nbsp; LIGAR</button>
+    <div class="nav"><button class="btn" id="prev">← &nbsp; ANTERIOR</button><button class="btn" id="next">PRÓXIMO &nbsp;→</button></div>
+  </section>
+
+  <section class="card">
+    <div class="section-title status-title">STATUS DA LIGAÇÃO</div>
+    <div class="statuses">
+      <button class="status-btn" data-status="atendeu">✓ &nbsp; ATENDEU</button>
+      <button class="status-btn" data-status="nao_atendeu">✕ &nbsp; NÃO ATENDEU</button>
+      <button class="status-btn" data-status="retornar">↩ &nbsp; RETORNAR</button>
+      <button class="status-btn" data-status="sem_interesse">🚫 &nbsp; SEM INTERESSE</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="current-head"><div class="section-title">FILA DE LIGAÇÕES</div><div class="pill" id="queueCount">0 contatos</div></div>
+    <div id="queue" class="queue"></div>
+  </section>
+
+  <div class="actions">
+    <button class="btn reset" id="newList">＋ &nbsp; NOVA LISTA</button>
+    <button class="btn reset" id="reset">↺ &nbsp; RECOMEÇAR</button>
+  </div>
+</section>
+
+<div class="privacy">🔒 <strong>Seus contatos permanecem neste dispositivo.</strong><br>A lista de contatos não é enviada para o servidor.</div>
+<footer class="footer"><b>CallUp Cons</b><br>Criado por Luis Zadi</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

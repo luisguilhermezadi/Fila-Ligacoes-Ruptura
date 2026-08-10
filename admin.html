@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CallUp Cons — Admin</title>
+<style>body{font-family:system-ui;background:#080a0f;color:#f7f8fa;margin:0;padding:30px}main{max-width:1000px;margin:auto}.card{background:#11141b;border:1px solid #252b37;border-radius:18px;padding:20px;margin:12px 0}button{padding:10px 13px;border-radius:10px;border:1px solid #303746;background:#171b24;color:#fff;cursor:pointer}.danger{color:#ff9ba3}.ok{color:#8cf0bd}table{width:100%;border-collapse:collapse}td,th{padding:12px;border-bottom:1px solid #252b37;text-align:left}small{color:#8992a3}</style></head>
+<body><main><h1>CallUp Cons — Administração</h1><p id="msg"><small>Carregando…</small></p><div id="list"></div></main>
+<script type="module">
+import { supabase } from "./js/supabase.js";
+import { ADMIN_EMAIL } from "./js/config.js";
+const msg=document.getElementById("msg"), list=document.getElementById("list");
+async function load(){
+ const {data:{user}}=await supabase.auth.getUser();
+ if(!user){location.href="index.html";return}
+ if(user.email.toLowerCase()!==ADMIN_EMAIL.toLowerCase()){msg.textContent="Acesso negado.";return}
+ const {data,error}=await supabase.from("profiles").select("*").order("created_at",{ascending:false});
+ if(error){msg.textContent=error.message;return}
+ list.innerHTML='<div class="card"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+data.map(p=>`<tr><td>${p.full_name||"-"}</td><td>${p.email}</td><td>${p.status}</td><td>
+ <button data-id="${p.id}" data-status="approved">Aprovar</button>
+ <button data-id="${p.id}" data-status="rejected">Recusar</button>
+ <button data-id="${p.id}" data-status="blocked">Bloquear</button>
+ <button data-id="${p.id}" data-status="pending">Desbloquear</button>
+ </td></tr>`).join("")+'</tbody></table></div>';
+ list.querySelectorAll("button").forEach(b=>b.onclick=async()=>{const {error}=await supabase.from("profiles").update({status:b.dataset.status,updated_at:new Date().toISOString()}).eq("id",b.dataset.id);if(error)alert(error.message);else load();});
+}
+load();
+</script></body></html>
