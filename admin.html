@@ -1,24 +1,904 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CallUp Cons — Admin</title>
-<style>body{font-family:system-ui;background:#080a0f;color:#f7f8fa;margin:0;padding:30px}main{max-width:1000px;margin:auto}.card{background:#11141b;border:1px solid #252b37;border-radius:18px;padding:20px;margin:12px 0}button{padding:10px 13px;border-radius:10px;border:1px solid #303746;background:#171b24;color:#fff;cursor:pointer}.danger{color:#ff9ba3}.ok{color:#8cf0bd}table{width:100%;border-collapse:collapse}td,th{padding:12px;border-bottom:1px solid #252b37;text-align:left}small{color:#8992a3}</style></head>
-<body><main><h1>CallUp Cons — Administração</h1><p id="msg"><small>Carregando…</small></p><div id="list"></div></main>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>CallUp Cons — Administração</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #080a0f;
+      color: #f7f8fa;
+      margin: 0;
+      padding: 30px;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #8992a3;
+      margin-top: 6px;
+    }
+
+    .card {
+      background: #11141b;
+      border: 1px solid #252b37;
+      border-radius: 18px;
+      padding: 20px;
+      margin: 12px 0;
+      overflow-x: auto;
+    }
+
+    .status-box {
+      padding: 14px 16px;
+      border-radius: 12px;
+      margin-bottom: 18px;
+      background: #11141b;
+      border: 1px solid #252b37;
+    }
+
+    .danger {
+      color: #ff9ba3;
+    }
+
+    .ok {
+      color: #8cf0bd;
+    }
+
+    .warning {
+      color: #ffd27d;
+    }
+
+    .muted {
+      color: #8992a3;
+    }
+
+    button {
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid #303746;
+      background: #171b24;
+      color: #fff;
+      cursor: pointer;
+      margin: 3px;
+      transition: .15s;
+    }
+
+    button:hover {
+      background: #222837;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .logout {
+      background: #24161a;
+      border-color: #51232b;
+      color: #ffb0b7;
+    }
+
+    .approve {
+      background: #10251c;
+      border-color: #225c3c;
+      color: #8cf0bd;
+    }
+
+    .reject {
+      background: #28171a;
+      border-color: #633038;
+      color: #ff9ba3;
+    }
+
+    .block {
+      background: #28220f;
+      border-color: #66531c;
+      color: #ffd27d;
+    }
+
+    .unblock {
+      background: #12202a;
+      border-color: #28516a;
+      color: #8ed8ff;
+    }
+
+    .refresh {
+      margin-bottom: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+    }
+
+    td,
+    th {
+      padding: 12px;
+      border-bottom: 1px solid #252b37;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: #aeb6c5;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    td {
+      font-size: 14px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-approved {
+      background: #10251c;
+      color: #8cf0bd;
+    }
+
+    .badge-pending {
+      background: #28220f;
+      color: #ffd27d;
+    }
+
+    .badge-rejected {
+      background: #28171a;
+      color: #ff9ba3;
+    }
+
+    .badge-blocked {
+      background: #2a1820;
+      color: #ff9ba3;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 40px;
+      color: #8992a3;
+    }
+
+    .login-help {
+      line-height: 1.6;
+    }
+
+    @media (max-width: 700px) {
+      body {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+
+      .card {
+        padding: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<main>
+
+  <header>
+    <div>
+      <h1>CallUp Cons — Administração</h1>
+      <div class="subtitle">
+        Gerenciamento de usuários e aprovações
+      </div>
+    </div>
+
+    <button id="logoutBtn" class="logout" style="display:none;">
+      Sair
+    </button>
+  </header>
+
+  <div id="msg" class="status-box">
+    <span class="muted">Verificando autenticação...</span>
+  </div>
+
+  <div id="loginHelp" class="card login-help" style="display:none;">
+    <h3>Administrador não autenticado</h3>
+
+    <p>
+      Você precisa estar logado no sistema com o e-mail de administrador:
+    </p>
+
+    <strong id="adminEmailDisplay"></strong>
+
+    <p class="muted">
+      Faça login no sistema principal e depois volte para esta página.
+    </p>
+
+    <button id="goLogin">
+      Ir para o login
+    </button>
+  </div>
+
+  <div id="adminPanel" style="display:none;">
+
+    <div class="card">
+
+      <button id="refreshBtn" class="refresh">
+        ↻ Atualizar lista
+      </button>
+
+      <span id="userInfo" class="muted"></span>
+
+    </div>
+
+    <div id="list"></div>
+
+  </div>
+
+</main>
+
 <script type="module">
-import { supabase } from "./js/supabase.js";
-import { ADMIN_EMAIL } from "./js/config.js";
-const msg=document.getElementById("msg"), list=document.getElementById("list");
-async function load(){
- const {data:{user}}=await supabase.auth.getUser();
- if(!user){location.href="index.html";return}
- if(user.email.toLowerCase()!==ADMIN_EMAIL.toLowerCase()){msg.textContent="Acesso negado.";return}
- const {data,error}=await supabase.from("profiles").select("*").order("created_at",{ascending:false});
- if(error){msg.textContent=error.message;return}
- list.innerHTML='<div class="card"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+data.map(p=>`<tr><td>${p.full_name||"-"}</td><td>${p.email}</td><td>${p.status}</td><td>
- <button data-id="${p.id}" data-status="approved">Aprovar</button>
- <button data-id="${p.id}" data-status="rejected">Recusar</button>
- <button data-id="${p.id}" data-status="blocked">Bloquear</button>
- <button data-id="${p.id}" data-status="pending">Desbloquear</button>
- </td></tr>`).join("")+'</tbody></table></div>';
- list.querySelectorAll("button").forEach(b=>b.onclick=async()=>{const {error}=await supabase.from("profiles").update({status:b.dataset.status,updated_at:new Date().toISOString()}).eq("id",b.dataset.id);if(error)alert(error.message);else load();});
-}
-load();
-</script></body></html>
+
+  import { supabase } from "./js/supabase.js";
+  import { ADMIN_EMAIL } from "./js/config.js";
+
+  const msg = document.getElementById("msg");
+  const list = document.getElementById("list");
+  const adminPanel = document.getElementById("adminPanel");
+  const loginHelp = document.getElementById("loginHelp");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const goLogin = document.getElementById("goLogin");
+  const userInfo = document.getElementById("userInfo");
+  const adminEmailDisplay = document.getElementById("adminEmailDisplay");
+
+
+  adminEmailDisplay.textContent = ADMIN_EMAIL;
+
+
+  function setMessage(text, type = "muted") {
+
+    msg.innerHTML = `<span class="${type}">${text}</span>`;
+
+  }
+
+
+  function escapeHTML(value) {
+
+    if (value === null || value === undefined) {
+      return "";
+    }
+
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+  }
+
+
+  function statusBadge(status) {
+
+    const normalized = String(status || "pending").toLowerCase();
+
+    const labels = {
+      approved: "Aprovado",
+      pending: "Pendente",
+      rejected: "Recusado",
+      blocked: "Bloqueado"
+    };
+
+    const label = labels[normalized] || normalized;
+
+    return `
+      <span class="badge badge-${escapeHTML(normalized)}">
+        ${escapeHTML(label)}
+      </span>
+    `;
+
+  }
+
+
+  async function checkAuthentication() {
+
+    setMessage("Verificando sessão do Supabase...", "muted");
+
+    try {
+
+      const {
+        data,
+        error
+      } = await supabase.auth.getUser();
+
+      if (error) {
+
+        console.error("Erro de autenticação:", error);
+
+        setMessage(
+          "Erro ao verificar o login: " + error.message,
+          "danger"
+        );
+
+        loginHelp.style.display = "block";
+
+        return null;
+      }
+
+
+      const user = data?.user;
+
+
+      /*
+       * IMPORTANTE:
+       * Não redirecionamos para index.html.
+       *
+       * Isso permite descobrir exatamente
+       * se o problema é a sessão.
+       */
+
+      if (!user) {
+
+        setMessage(
+          "Nenhum usuário está autenticado no Supabase.",
+          "warning"
+        );
+
+        loginHelp.style.display = "block";
+        adminPanel.style.display = "none";
+        logoutBtn.style.display = "none";
+
+        return null;
+      }
+
+
+      console.log("Usuário autenticado:", user);
+
+
+      if (!user.email) {
+
+        setMessage(
+          "O usuário autenticado não possui e-mail.",
+          "danger"
+        );
+
+        return null;
+      }
+
+
+      /*
+       * Verificação do administrador.
+       */
+
+      if (
+        user.email.trim().toLowerCase() !==
+        ADMIN_EMAIL.trim().toLowerCase()
+      ) {
+
+        setMessage(
+          "Acesso negado. O usuário conectado não é o administrador.",
+          "danger"
+        );
+
+        userInfo.textContent =
+          "Usuário conectado: " + user.email;
+
+        adminPanel.style.display = "none";
+        loginHelp.style.display = "none";
+        logoutBtn.style.display = "block";
+
+        return null;
+      }
+
+
+      /*
+       * Administrador autorizado.
+       */
+
+      setMessage(
+        "Administrador autenticado com sucesso.",
+        "ok"
+      );
+
+      userInfo.textContent =
+        "Administrador: " + user.email;
+
+      loginHelp.style.display = "none";
+      adminPanel.style.display = "block";
+      logoutBtn.style.display = "block";
+
+
+      return user;
+
+    } catch (err) {
+
+      console.error(err);
+
+      setMessage(
+        "Erro inesperado: " + err.message,
+        "danger"
+      );
+
+      return null;
+    }
+
+  }
+
+
+  async function loadUsers() {
+
+    setMessage(
+      "Carregando usuários...",
+      "muted"
+    );
+
+    try {
+
+      const {
+        data,
+        error
+      } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", {
+          ascending: false
+        });
+
+
+      if (error) {
+
+        console.error("Erro ao carregar profiles:", error);
+
+        setMessage(
+          "Erro ao carregar usuários: " + error.message,
+          "danger"
+        );
+
+        list.innerHTML = `
+          <div class="card">
+            <strong class="danger">
+              Não foi possível carregar os usuários.
+            </strong>
+
+            <p class="muted">
+              Verifique as políticas RLS da tabela profiles no Supabase.
+            </p>
+          </div>
+        `;
+
+        return;
+      }
+
+
+      if (!data || data.length === 0) {
+
+        setMessage(
+          "Administrador autenticado. Nenhum usuário encontrado.",
+          "ok"
+        );
+
+        list.innerHTML = `
+          <div class="card empty">
+            Nenhum cadastro encontrado.
+          </div>
+        `;
+
+        return;
+      }
+
+
+      setMessage(
+        `${data.length} usuário(s) encontrado(s).`,
+        "ok"
+      );
+
+
+      let rows = "";
+
+
+      for (const p of data) {
+
+        const status =
+          p.status || "pending";
+
+
+        rows += `
+
+          <tr>
+
+            <td>
+              ${escapeHTML(p.full_name || "-")}
+            </td>
+
+            <td>
+              ${escapeHTML(p.email || "-")}
+            </td>
+
+            <td>
+              ${statusBadge(status)}
+            </td>
+
+            <td>
+
+              <button
+                class="approve"
+                data-id="${escapeHTML(p.id)}"
+                data-status="approved">
+                Aprovar
+              </button>
+
+              <button
+                class="reject"
+                data-id="${escapeHTML(p.id)}"
+                data-status="rejected">
+                Recusar
+              </button>
+
+              <button
+                class="block"
+                data-id="${escapeHTML(p.id)}"
+                data-status="blocked">
+                Bloquear
+              </button>
+
+              <button
+                class="unblock"
+                data-id="${escapeHTML(p.id)}"
+                data-status="pending">
+                Desbloquear
+              </button>
+
+            </td>
+
+          </tr>
+
+        `;
+
+      }
+
+
+      list.innerHTML = `
+
+        <div class="card">
+
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+
+            </thead>
+
+            <tbody>
+              ${rows}
+            </tbody>
+
+          </table>
+
+        </div>
+
+      `;
+
+
+      /*
+       * Ativa os botões.
+       */
+
+      list
+        .querySelectorAll("button[data-id]")
+        .forEach(button => {
+
+          button.addEventListener(
+            "click",
+            async () => {
+
+              await updateStatus(
+                button.dataset.id,
+                button.dataset.status,
+                button
+              );
+
+            }
+          );
+
+        });
+
+
+    } catch (err) {
+
+      console.error(err);
+
+      setMessage(
+        "Erro inesperado ao carregar usuários: " +
+        err.message,
+        "danger"
+      );
+
+    }
+
+  }
+
+
+  async function updateStatus(
+    id,
+    status,
+    button
+  ) {
+
+    const statusNames = {
+
+      approved: "aprovar",
+
+      rejected: "recusar",
+
+      blocked: "bloquear",
+
+      pending: "desbloquear"
+
+    };
+
+
+    const action =
+      statusNames[status] || "alterar";
+
+
+    const confirmed =
+      confirm(
+        `Deseja ${action} este usuário?`
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    button.disabled = true;
+
+
+    try {
+
+      const {
+        error
+      } = await supabase
+        .from("profiles")
+        .update({
+
+          status: status,
+
+          updated_at:
+            new Date().toISOString()
+
+        })
+        .eq("id", id);
+
+
+      if (error) {
+
+        console.error(
+          "Erro ao atualizar:",
+          error
+        );
+
+        alert(
+          "Erro ao atualizar usuário:\n\n" +
+          error.message
+        );
+
+        button.disabled = false;
+
+        return;
+      }
+
+
+      await loadUsers();
+
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert(
+        "Erro inesperado:\n\n" +
+        err.message
+      );
+
+      button.disabled = false;
+
+    }
+
+  }
+
+
+  /*
+   * Logout.
+   */
+
+  logoutBtn.addEventListener(
+    "click",
+    async () => {
+
+      const confirmed =
+        confirm(
+          "Deseja realmente sair?"
+        );
+
+      if (!confirmed) {
+        return;
+      }
+
+
+      const {
+        error
+      } = await supabase.auth.signOut();
+
+
+      if (error) {
+
+        alert(
+          "Erro ao sair:\n\n" +
+          error.message
+        );
+
+        return;
+      }
+
+
+      adminPanel.style.display = "none";
+      logoutBtn.style.display = "none";
+
+      setMessage(
+        "Sessão encerrada. Faça login novamente para acessar o administrador.",
+        "warning"
+      );
+
+      loginHelp.style.display = "block";
+
+    }
+  );
+
+
+  /*
+   * Botão para voltar ao login.
+   *
+   * Se seu login está no index.html,
+   * direciona para ele.
+   */
+
+  goLogin.addEventListener(
+    "click",
+    () => {
+
+      window.location.href =
+        "./index.html";
+
+    }
+  );
+
+
+  /*
+   * Atualizar lista.
+   */
+
+  refreshBtn.addEventListener(
+    "click",
+    async () => {
+
+      const user =
+        await checkAuthentication();
+
+      if (user) {
+        await loadUsers();
+      }
+
+    }
+  );
+
+
+  /*
+   * Inicialização.
+   */
+
+  async function init() {
+
+    const user =
+      await checkAuthentication();
+
+
+    if (!user) {
+      return;
+    }
+
+
+    await loadUsers();
+
+  }
+
+
+  /*
+   * Detecta login/logout
+   * realizado em outra aba.
+   */
+
+  supabase.auth.onAuthStateChange(
+    async (event, session) => {
+
+      console.log(
+        "Evento de autenticação:",
+        event
+      );
+
+
+      if (
+        event === "SIGNED_IN" ||
+        event === "TOKEN_REFRESHED"
+      ) {
+
+        const user =
+          await checkAuthentication();
+
+        if (user) {
+          await loadUsers();
+        }
+
+      }
+
+
+      if (event === "SIGNED_OUT") {
+
+        adminPanel.style.display = "none";
+        logoutBtn.style.display = "none";
+        loginHelp.style.display = "block";
+
+        setMessage(
+          "Sessão encerrada.",
+          "warning"
+        );
+
+      }
+
+    }
+  );
+
+
+  init();
+
+</script>
+
+</body>
+</html>
